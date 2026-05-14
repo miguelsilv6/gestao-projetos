@@ -1,0 +1,54 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gpi_postgres
+    environment:
+      POSTGRES_USER: gpi_user
+      POSTGRES_PASSWORD: gpi_password
+      POSTGRES_DB: gpi_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U gpi_user -d gpi_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: gpi_mailhog
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gpi_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://gpi_user:gpi_password@postgres:5432/gpi_db
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      SMTP_SECURE: 'false'
+      SMTP_USER: ''
+      SMTP_PASS: ''
+      SMTP_FROM_NAME: 'GPI Sistema'
+      SMTP_FROM_EMAIL: 'noreply@gpi.pt'
+      CRON_SECRET: ${CRON_SECRET}
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./backups:/app/backups
+
+volumes:
+  postgres_data:

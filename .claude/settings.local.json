@@ -1,7 +1,41 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx create-next-app@latest . --typescript --tailwind --app --src-dir --no-eslint --import-alias \"@/*\" --use-npm)"
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --src-dir --no-eslint --import-alias \"@/*\" --use-npm)",
+      "Bash(psql --version)",
+      "Bash(pg_isready)",
+      "Bash(brew services *)",
+      "Bash(open -a Docker)",
+      "Bash(docker compose *)",
+      "Bash(npx prisma *)",
+      "Bash(npm install *)",
+      "Bash(npx tsx *)",
+      "Bash(mkdir -p /Users/miguelsilva/Downloads/gestao-processos/src/app/\\\\\\(auth\\\\\\)/login /Users/miguelsilva/Downloads/gestao-processos/src/app/\\\\\\(dashboard\\\\\\)/dashboard /Users/miguelsilva/Downloads/gestao-processos/src/app/\\\\\\(dashboard\\\\\\)/inqueritos /Users/miguelsilva/Downloads/gestao-processos/src/app/\\\\\\(dashboard\\\\\\)/brigadas /Users/miguelsilva/Downloads/gestao-processos/src/app/\\\\\\(dashboard\\\\\\)/utilizadores /Users/miguelsilva/Downloads/gestao-processos/src/app/\\\\\\(dashboard\\\\\\)/estatisticas /Users/miguelsilva/Downloads/gestao-processos/src/app/\\\\\\(dashboard\\\\\\)/notificacoes /Users/miguelsilva/Downloads/gestao-processos/src/app/\\\\\\(dashboard\\\\\\)/configuracoes /Users/miguelsilva/Downloads/gestao-processos/src/app/api/auth/\\\\[...nextauth\\\\] /Users/miguelsilva/Downloads/gestao-processos/src/app/api/inqueritos /Users/miguelsilva/Downloads/gestao-processos/src/app/api/atividades /Users/miguelsilva/Downloads/gestao-processos/src/app/api/brigadas /Users/miguelsilva/Downloads/gestao-processos/src/app/api/utilizadores /Users/miguelsilva/Downloads/gestao-processos/src/app/api/notificacoes /Users/miguelsilva/Downloads/gestao-processos/src/app/api/estatisticas /Users/miguelsilva/Downloads/gestao-processos/src/app/api/health /Users/miguelsilva/Downloads/gestao-processos/src/components/layout /Users/miguelsilva/Downloads/gestao-processos/src/components/inqueritos /Users/miguelsilva/Downloads/gestao-processos/src/components/atividades /Users/miguelsilva/Downloads/gestao-processos/src/components/estatisticas /Users/miguelsilva/Downloads/gestao-processos/src/types 2>&1)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:3000/api/health)",
+      "Bash(npm run dev > /tmp/gpi-dev.log 2>&1 & *)",
+      "Bash(curl -s -c /tmp/gpi-cookies.txt -b /tmp/gpi-cookies.txt -X POST http://localhost:3000/api/auth/callback/credentials -H 'Content-Type: application/x-www-form-urlencoded' -d 'email=admin%40gpi.pt&password=Admin123%21&csrfToken=test' -L -w '\\\\nHTTP Status: %{http_code}')",
+      "Bash(grep -v \"^$\")",
+      "Bash(npm list *)",
+      "Bash(mkdir -p \"/Users/miguelsilva/Downloads/gestao-processos/src/app/\\(dashboard\\)/inqueritos/[...nuipc]/editar\")",
+      "Bash(mkdir -p \"/Users/miguelsilva/Downloads/gestao-processos/src/app/\\(dashboard\\)/inqueritos/[...nuipc]/atividade\")",
+      "Bash(mkdir -p \"/Users/miguelsilva/Downloads/gestao-processos/src/app/api/inqueritos/[...nuipc]\")",
+      "Bash(rm -rf \"/Users/miguelsilva/Downloads/gestao-processos/src/app/\\(dashboard\\)/inqueritos/[nuipc]\")",
+      "Bash(rm -rf \"/Users/miguelsilva/Downloads/gestao-processos/src/app/api/inqueritos/[nuipc]\")",
+      "Bash(sed -i '' 's|`/inqueritos/${encodeURIComponent\\(inq\\\\.nuipc\\)}`|`/inqueritos/${inq.nuipc}`|g' \"/Users/miguelsilva/Downloads/gestao-processos/src/app/\\(dashboard\\)/dashboard/page.tsx\")",
+      "Bash(sed -i '' 's|`/inqueritos/${encodeURIComponent\\(nuipc\\)}`|`/inqueritos/${nuipc}`|g' \"/Users/miguelsilva/Downloads/gestao-processos/src/components/inqueritos/inquerito-card.tsx\")",
+      "Bash(sed -i '' 's|`/inqueritos/${encodeURIComponent\\(inq\\\\.nuipc\\)}`|`/inqueritos/${inq.nuipc}`|g' \"/Users/miguelsilva/Downloads/gestao-processos/src/components/inqueritos/inquerito-table.tsx\")",
+      "Bash(sed -i '' 's|`/inqueritos/${encodeURIComponent\\(n\\\\.inquerito\\\\.nuipc\\)}`|`/inqueritos/${n.inquerito.nuipc}`|g' \"/Users/miguelsilva/Downloads/gestao-processos/src/components/notificacoes/notificacoes-list.tsx\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(rm -rf \"/Users/miguelsilva/Downloads/gestao-processos/src/app/\\(dashboard\\)/inqueritos/[...nuipc]\")",
+      "Bash(rm -rf \"/Users/miguelsilva/Downloads/gestao-processos/src/app/api/inqueritos/[...nuipc]\")",
+      "Bash(mkdir -p \"/Users/miguelsilva/Downloads/gestao-processos/src/app/\\(dashboard\\)/inqueritos/[nuipc]/editar\")",
+      "Bash(mkdir -p \"/Users/miguelsilva/Downloads/gestao-processos/src/app/\\(dashboard\\)/inqueritos/[nuipc]/atividade\")",
+      "Bash(mkdir -p \"/Users/miguelsilva/Downloads/gestao-processos/src/app/api/inqueritos/[nuipc]\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(git add *)"
     ]
   }
 }

@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  INSPETOR
+  INSPETOR_CHEFE
+  COORDENADOR
+  ESTATISTICA
+  ADMINISTRACAO
+}
+
+enum EstadoInquerito {
+  ABERTO
+  EM_INVESTIGACAO
+  SUSPENSO
+  CONCLUIDO
+  ARQUIVADO
+}
+
+enum FaseProcessual {
+  INQUERITO
+  INSTRUCAO
+  JULGAMENTO
+  RECURSO
+  TRANSITO_EM_JULGADO
+}
+
+enum TipoNotificacao {
+  PRAZO_APROXIMANDO
+  PRAZO_ULTRAPASSADO
+  ATIVIDADE_ADICIONADA
+  INQUERITO_ATRIBUIDO
+  INQUERITO_TRANSFERIDO
+}
+
+model Brigada {
+  id          String   @id @default(cuid())
+  nome        String   @unique
+  descricao   String?
+  ativa       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  utilizadores Utilizador[]
+  inqueritos   Inquerito[]
+}
+
+model Utilizador {
+  id           String   @id @default(cuid())
+  nome         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  ativo        Boolean  @default(true)
+  chefeSupremo Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  brigada   Brigada? @relation(fields: [brigadaId], references: [id])
+  brigadaId String?
+
+  inqueritos           Inquerito[]   @relation("InspetorAtribuido")
+  atividadesRealizadas Atividade[]
+  notificacoes         Notificacao[]
+  sessoes              Sessao[]
+
+  @@index([brigadaId])
+  @@index([role])
+}
+
+model Inquerito {
+  id             String          @id @default(cuid())
+  nuipc          String          @unique
+  natureza       String
+  estado         EstadoInquerito @default(ABERTO)
+  faseProcessual FaseProcessual  @default(INQUERITO)
+  dataAbertura   DateTime
+  dataPrazo      DateTime?
+  dataConclusao  DateTime?
+  notas          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  brigada   Brigada @relation(fields: [brigadaId], references: [id])
+  brigadaId String
+
+  inspetor   Utilizador? @relation("InspetorAtribuido", fields: [inspetorId], references: [id])
+  inspetorId String?
+
+  atividades   Atividade[]
+  notificacoes Notificacao[]
+
+  @@index([brigadaId])
+  @@index([inspetorId])
+  @@index([estado])
+  @@index([faseProcessual])
+  @@index([dataPrazo])
+  @@index([nuipc])
+}
+
+model Atividade {
+  id             String   @id @default(cuid())
+  descricao      String
+  dataRealizacao DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  inquerito   Inquerito @relation(fields: [inqueritoid], references: [id], onDelete: Cascade)
+  inqueritoid String
+
+  realizadaPor Utilizador @relation(fields: [utilizadorId], references: [id])
+  utilizadorId String
+
+  @@index([inqueritoid])
+  @@index([utilizadorId])
+}
+
+model Notificacao {
+  id           String          @id @default(cuid())
+  tipo         TipoNotificacao
+  titulo       String
+  mensagem     String
+  lida         Boolean         @default(false)
+  emailEnviado Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+
+  utilizador   Utilizador @relation(fields: [utilizadorId], references: [id], onDelete: Cascade)
+  utilizadorId String
+
+  inquerito   Inquerito? @relation(fields: [inqueritoid], references: [id], onDelete: SetNull)
+  inqueritoid String?
+
+  @@index([utilizadorId, lida])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  acao         String
+  entidade     String
+  entidadeId   String
+  utilizadorId String
+  detalhes     Json?
+  ip           String?
+  createdAt    DateTime @default(now())
+
+  @@index([entidade, entidadeId])
+  @@index([utilizadorId])
+  @@index([createdAt])
+}
+
+model ConfiguracaoSistema {
+  id                 String   @id @default("singleton")
+  backupScheduleCron String   @default("0 2 * * *")
+  prazoAlertaDias    Int      @default(7)
+  emailRemetenteNome String   @default("GPI Sistema")
+  emailRemetenteAddr String   @default("noreply@gpi.pt")
+  updatedAt          DateTime @updatedAt
+}
+
+model Sessao {
+  id           String     @id @default(cuid())
+  sessionToken String     @unique
+  expires      DateTime
+
+  utilizador   Utilizador @relation(fields: [utilizadorId], references: [id], onDelete: Cascade)
+  utilizadorId String
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
