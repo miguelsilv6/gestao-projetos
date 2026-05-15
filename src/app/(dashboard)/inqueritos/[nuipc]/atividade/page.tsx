@@ -24,7 +24,7 @@ interface AtividadePadrao {
 }
 
 const schema = z.object({
-  atividadePadraoId: z.string().min(1, 'Selecione uma atividade'),
+  descricao: z.string().min(1, 'Selecione uma atividade'),
   observacoes: z.string().max(2000).optional(),
   dataRealizacao: z.string().optional(),
 })
@@ -66,8 +66,8 @@ export default function AddAtividadePage() {
     defaultValues: { dataRealizacao: defaultDatetime },
   })
 
-  const selectedId = watch('atividadePadraoId')
-  const selectedPadrao = atividadesPadrao.find((a) => a.id === selectedId)
+  const selectedNome = watch('descricao')
+  const selectedPadrao = atividadesPadrao.find((a) => a.nome === selectedNome)
 
   async function onSubmit(data: FormData) {
     if (!inqueritoid) return
@@ -149,16 +149,16 @@ export default function AddAtividadePage() {
                 </div>
               ) : (
                 <Controller
-                  name="atividadePadraoId"
+                  name="descricao"
                   control={control}
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value ?? ''}>
-                      <SelectTrigger className={errors.atividadePadraoId ? 'border-red-500' : ''}>
+                      <SelectTrigger className={errors.descricao ? 'border-red-500' : ''}>
                         <SelectValue placeholder="Selecionar tipo de atividade..." />
                       </SelectTrigger>
                       <SelectContent>
                         {atividadesPadrao.map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
+                          <SelectItem key={a.id} value={a.nome}>
                             {a.nome}
                           </SelectItem>
                         ))}
@@ -168,8 +168,8 @@ export default function AddAtividadePage() {
                 />
               )}
 
-              {errors.atividadePadraoId && (
-                <p className="text-xs text-red-600">{errors.atividadePadraoId.message}</p>
+              {errors.descricao && (
+                <p className="text-xs text-red-600">{errors.descricao.message}</p>
               )}
 
               {/* Show the template description as a hint */}

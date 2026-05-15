@@ -8,7 +8,7 @@ import type { Role } from '@/generated/prisma/enums'
 
 const schema = z.object({
   inqueritoid: z.string().min(1),
-  atividadePadraoId: z.string().min(1, 'Selecione uma atividade'),
+  descricao: z.string().min(1, 'Selecione uma atividade'),
   observacoes: z.string().max(2000).optional().nullable(),
   dataRealizacao: z.string().optional(),
 })
@@ -26,12 +26,7 @@ export async function POST(req: NextRequest) {
     const parsed = schema.safeParse(body)
     if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
 
-    const { inqueritoid, atividadePadraoId, observacoes, dataRealizacao } = parsed.data
-
-    // Resolve the standard activity name
-    const atividadePadrao = await prisma.atividadePadrao.findUnique({ where: { id: atividadePadraoId } })
-    if (!atividadePadrao) return apiError('Atividade padrão não encontrada', 404)
-    if (!atividadePadrao.ativa) return apiError('Atividade padrão inativa', 400)
+    const { inqueritoid, descricao, observacoes, dataRealizacao } = parsed.data
 
     // Find inquiry and check access
     const inquerito = await prisma.inquerito.findUnique({
@@ -50,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     const atividade = await prisma.atividade.create({
       data: {
-        descricao: atividadePadrao.nome,
+        descricao,
         observacoes: observacoes ?? null,
         dataRealizacao: dataRealizacao ? new Date(dataRealizacao) : new Date(),
         inqueritoid,
