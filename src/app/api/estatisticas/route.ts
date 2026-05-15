@@ -1,8 +1,15 @@
 import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { getSession, handleApiError, apiError } from '@/lib/auth-helpers'
 import { hasPermission } from '@/lib/rbac'
 import type { Role } from '@/generated/prisma/enums'
+
+const querySchema = z.object({
+  brigadaId: z.string().optional(),
+  dataInicio: z.string().date('dataInicio inválida').optional(),
+  dataFim: z.string().date('dataFim inválida').optional(),
+})
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,9 +21,14 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const brigadaId = searchParams.get('brigadaId') ?? undefined
-    const dataInicio = searchParams.get('dataInicio')
-    const dataFim = searchParams.get('dataFim')
+    const parsed = querySchema.safeParse({
+      brigadaId: searchParams.get('brigadaId') ?? undefined,
+      dataInicio: searchParams.get('dataInicio') ?? undefined,
+      dataFim: searchParams.get('dataFim') ?? undefined,
+    })
+    if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
+
+    const { brigadaId, dataInicio, dataFim } = parsed.data
 
     const where = {
       ...(brigadaId && { brigadaId }),

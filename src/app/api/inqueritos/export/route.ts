@@ -1,0 +1,73 @@
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getSession, handleApiError } from '@/lib/auth-helpers'
+import { buildInqueritoWhere } from '@/lib/auth-helpers'
+import type { Role } from '@/generated/prisma/enums'
+
+function escapeCSV(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  const str = String(value)
+  if (str.includes('"') || str.includes(',') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`
+  }
+  return str
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getSession()
+    const role = session.user.role as Role
+    const { searchParams } = new URL(req.url)
+
+    const estado = searchParams.get('estado') ?? ''
+    const faseProcessual = searchParams.get('faseProcessual') ?? ''
+    const brigadaId = searchParams.get('brigadaId') ?? ''
+
+    const roleWhere = buildInqueritoWhere(role, session.user.id, session.user.brigadaId)
+
+    const inqueritos = await prisma.inquerito.findMany({
+      where: {
+        ...roleWhere,
+        ...(estado && { estado: estado as never }),
+        ...(faseProcessual && { faseProcessual: faseProcessual as never }),
+        ...(brigadaId && { brigadaId }),
+      },
+      orderBy: { dataAbertura: 'desc' },
+      select: {
+        nuipc: true,
+        natureza: true,
+        estado: true,
+        faseProcessual: true,
+        dataAbertura: true,
+        dataPrazo: true,
+        dataConclusao: true,
+        brigada: { select: { nome: true } },
+        inspetor: { select: { nome: true } },
+      },
+    })
+
+    const headers = ['NUIPC', 'Natureza', 'Estado', 'Fase Processual', 'Data Abertura', 'Prazo', 'Data Conclusão', 'Brigada', 'Inspetor']
+    const rows = inqueritos.map((i) => [
+      i.nuipc,
+      i.natureza,
+      i.estado,
+      i.faseProcessual,
+      i.dataAbertura ? new Date(i.dataAbertura).toLocaleDateString('pt-PT') : '',
+      i.dataPrazo ? new Date(i.dataPrazo).toLocaleDateString('pt-PT') : '',
+      i.dataConclusao ? new Date(i.dataConclusao).toLocaleDateString('pt-PT') : '',
+      i.brigada?.nome ?? '',
+      i.inspetor?.nome ?? '',
+    ])
+
+    const csv = [headers, ...rows].map((row) => row.map(escapeCSV).join(',')).join('\n')
+
+    return new Response(csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="inqueritos-${new Date().toISOString().slice(0, 10)}.csv"`,
+      },
+    })
+  } catch (error) {
+    return handleApiError(error)
+  }
+}

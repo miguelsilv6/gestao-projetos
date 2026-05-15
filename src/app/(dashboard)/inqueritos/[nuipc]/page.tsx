@@ -73,6 +73,11 @@ export default async function InqueritoDetailPage({
               </span>
             )}
           </div>
+          {inquerito.nai && (
+            <p className="text-sm font-mono text-muted-foreground mt-0.5">
+              NAI: {inquerito.nai}
+            </p>
+          )}
           <p className="text-muted-foreground mt-1">{inquerito.natureza}</p>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <EstadoBadge estado={inquerito.estado} />

@@ -81,6 +81,23 @@ export async function PUT(
       },
     })
 
+    // Audit log for sensitive changes
+    const sensitiveChange = parsed.data.role !== undefined || parsed.data.ativo !== undefined
+    if (sensitiveChange) {
+      await prisma.auditLog.create({
+        data: {
+          acao: 'UPDATE_UTILIZADOR',
+          entidade: 'Utilizador',
+          entidadeId: id,
+          utilizadorId: session.user.id,
+          detalhes: {
+            ...(parsed.data.role !== undefined && { roleAnterior: utilizador.role, roleNovo: parsed.data.role }),
+            ...(parsed.data.ativo !== undefined && { ativoAnterior: utilizador.ativo, ativoNovo: parsed.data.ativo }),
+          },
+        },
+      })
+    }
+
     return Response.json(updated)
   } catch (error) {
     return handleApiError(error)
@@ -107,6 +124,17 @@ export async function DELETE(
 
     // Soft delete — just deactivate
     await prisma.utilizador.update({ where: { id }, data: { ativo: false } })
+
+    await prisma.auditLog.create({
+      data: {
+        acao: 'DEACTIVATE_UTILIZADOR',
+        entidade: 'Utilizador',
+        entidadeId: id,
+        utilizadorId: session.user.id,
+        detalhes: { nome: utilizador.nome, email: utilizador.email },
+      },
+    })
+
     return new Response(null, { status: 204 })
   } catch (error) {
     return handleApiError(error)

@@ -6,6 +6,7 @@ export const inqueritoSchema = z.object({
     .string()
     .min(1, 'NUIPC obrigatório')
     .regex(NUIPC_REGEX, 'Formato inválido. Ex: 2024/000001/YUSTR'),
+  nai: z.string().max(100).optional().nullable(),
   natureza: z.string().min(1, 'Natureza obrigatória').max(200),
   estado: z.enum(['ABERTO', 'EM_INVESTIGACAO', 'SUSPENSO', 'CONCLUIDO', 'ARQUIVADO']),
   faseProcessual: z.enum(['INQUERITO', 'INSTRUCAO', 'JULGAMENTO', 'RECURSO', 'TRANSITO_EM_JULGADO']),

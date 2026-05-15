@@ -10,10 +10,18 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ChevronLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { slugToNuipc, nuipcToSlug } from '@/lib/utils'
+
+interface AtividadePadrao {
+  id: string
+  nome: string
+  descricao: string | null
+  ativa: boolean
+}
 
 const schema = z.object({
   descricao: z.string().min(1, 'Descrição obrigatória'),
@@ -28,19 +36,36 @@ export default function AddAtividadePage() {
   const slug = params.nuipc as string
   const nuipc = slugToNuipc(slug)
   const [inqueritoid, setInqueritoid] = useState<string | null>(null)
+  const [atividadesPadrao, setAtividadesPadrao] = useState<AtividadePadrao[]>([])
 
   useEffect(() => {
     fetch(`/api/inqueritos/${slug}`)
       .then((r) => r.json())
       .then((d) => setInqueritoid(d.id))
       .catch(() => toast.error('Erro ao carregar inquérito'))
+
+    fetch('/api/atividades-padrao')
+      .then((r) => r.json())
+      .then((d: AtividadePadrao[]) => setAtividadesPadrao(d.filter((a) => a.ativa)))
+      .catch(() => {/* silently ignore – templates are optional */})
   }, [slug])
+
+  const defaultDatetime = new Date().toISOString().slice(0, 16)
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
-  } = useForm<FormData>({ resolver: zodResolver(schema) })
+  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { dataRealizacao: defaultDatetime } })
+
+  function handleSelectPadrao(id: string | null) {
+    if (!id || id === 'none') return
+    const padrao = atividadesPadrao.find((a) => a.id === id)
+    if (!padrao) return
+    const text = padrao.descricao ? `${padrao.nome}\n\n${padrao.descricao}` : padrao.nome
+    setValue('descricao', text, { shouldValidate: true, shouldDirty: true })
+  }
 
   async function onSubmit(data: FormData) {
     if (!inqueritoid) return
@@ -93,6 +118,28 @@ export default function AddAtividadePage() {
                 {...register('dataRealizacao')}
               />
             </div>
+
+            {atividadesPadrao.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Atividade padrão</Label>
+                <Select onValueChange={handleSelectPadrao} defaultValue="none">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar modelo..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Sem modelo —</SelectItem>
+                    {atividadesPadrao.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Selecionar um modelo pré-preenche a descrição — pode editar livremente.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="descricao">Descrição *</Label>

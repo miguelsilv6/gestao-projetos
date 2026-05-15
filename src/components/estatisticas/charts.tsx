@@ -67,8 +67,8 @@ export function FasePieChart({ data }: { data: PorFase[] }) {
           cx="50%"
           cy="50%"
           outerRadius={80}
-          label={({ label, percent }) =>
-            `${label} ${(percent * 100).toFixed(0)}%`
+          label={(props: { label?: string; percent?: number }) =>
+            `${props.label ?? ''} ${((props.percent ?? 0) * 100).toFixed(0)}%`
           }
           labelLine={false}
         >

@@ -7,9 +7,15 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Users, FileText, Pencil } from 'lucide-react'
 import Link from 'next/link'
+import { Suspense } from 'react'
+import { BrigadasFilters } from '@/components/brigadas/brigadas-filters'
 import type { Role } from '@/generated/prisma/enums'
 
-export default async function BrigadasPage() {
+interface PageProps {
+  searchParams: Promise<{ search?: string; ativa?: string }>
+}
+
+export default async function BrigadasPage({ searchParams }: PageProps) {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
@@ -18,7 +24,13 @@ export default async function BrigadasPage() {
 
   const canManage = hasPermission(role, 'brigada:manage')
 
+  const { search, ativa } = await searchParams
+
   const brigadas = await prisma.brigada.findMany({
+    where: {
+      ...(search && { nome: { contains: search, mode: 'insensitive' } }),
+      ...(ativa !== undefined && { ativa: ativa === 'true' }),
+    },
     orderBy: { nome: 'asc' },
     include: {
       utilizadores: {
@@ -45,6 +57,10 @@ export default async function BrigadasPage() {
           </Button>
         )}
       </div>
+
+      <Suspense>
+        <BrigadasFilters />
+      </Suspense>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {brigadas.map((brigada) => {
@@ -93,10 +109,7 @@ export default async function BrigadasPage() {
                     <p className="text-xs text-muted-foreground mb-1">Inspetores</p>
                     <div className="flex flex-wrap gap-1">
                       {inspetores.map((i) => (
-                        <span
-                          key={i.id}
-                          className="text-xs bg-muted px-2 py-0.5 rounded-full"
-                        >
+                        <span key={i.id} className="text-xs bg-muted px-2 py-0.5 rounded-full">
                           {i.nome}
                         </span>
                       ))}
@@ -110,7 +123,7 @@ export default async function BrigadasPage() {
       </div>
 
       {brigadas.length === 0 && (
-        <p className="text-center text-muted-foreground py-12">Nenhuma brigada criada.</p>
+        <p className="text-center text-muted-foreground py-12">Nenhuma brigada encontrada.</p>
       )}
     </div>
   )

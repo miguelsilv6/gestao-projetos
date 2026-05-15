@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Bell, Check, CheckCheck } from 'lucide-react'
+import { Bell, Check, CheckCheck, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatDateTime, cn, nuipcToSlug } from '@/lib/utils'
 import Link from 'next/link'
@@ -25,8 +25,31 @@ interface Notificacao {
   inquerito: { nuipc: string } | null
 }
 
-export function NotificacoesList({ initialNotificacoes }: { initialNotificacoes: Notificacao[] }) {
+interface Props {
+  initialNotificacoes: Notificacao[]
+  initialNextCursor: string | null
+}
+
+export function NotificacoesList({ initialNotificacoes, initialNextCursor }: Props) {
   const [notificacoes, setNotificacoes] = useState(initialNotificacoes)
+  const [nextCursor, setNextCursor] = useState(initialNextCursor)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  async function loadMore() {
+    if (!nextCursor) return
+    setLoadingMore(true)
+    try {
+      const res = await fetch(`/api/notificacoes?cursor=${nextCursor}`)
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setNotificacoes((prev) => [...prev, ...data.items])
+      setNextCursor(data.nextCursor)
+    } catch {
+      toast.error('Erro ao carregar mais notificações')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   async function markRead(id: string) {
     await fetch(`/api/notificacoes/${id}`, { method: 'PATCH' })
@@ -109,6 +132,15 @@ export function NotificacoesList({ initialNotificacoes }: { initialNotificacoes:
           </div>
         </div>
       ))}
+
+      {nextCursor && (
+        <div className="flex justify-center pt-2">
+          <Button variant="outline" size="sm" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Carregar mais
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

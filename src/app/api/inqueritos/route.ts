@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
       ...(search && {
         OR: [
           { nuipc: { contains: search, mode: 'insensitive' as const } },
+          { nai: { contains: search, mode: 'insensitive' as const } },
           { natureza: { contains: search, mode: 'insensitive' as const } },
         ],
       }),
@@ -72,12 +73,10 @@ export async function POST(req: NextRequest) {
 
     const data = parsed.data
 
-    const existing = await prisma.inquerito.findUnique({ where: { nuipc: data.nuipc } })
-    if (existing) return apiError('NUIPC já existe', 409)
-
     const inquerito = await prisma.inquerito.create({
       data: {
         nuipc: data.nuipc,
+        nai: data.nai || null,
         natureza: data.natureza,
         estado: data.estado,
         faseProcessual: data.faseProcessual,

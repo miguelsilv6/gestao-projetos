@@ -8,16 +8,34 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { Suspense } from 'react'
+import { UtilizadoresFilters } from '@/components/utilizadores/utilizadores-filters'
 import type { Role } from '@/generated/prisma/enums'
 
-export default async function UtilizadoresPage() {
+interface PageProps {
+  searchParams: Promise<{ search?: string; role?: string; ativo?: string }>
+}
+
+export default async function UtilizadoresPage({ searchParams }: PageProps) {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
   const role = session.user.role as Role
   if (!hasPermission(role, 'utilizador:manage')) redirect('/dashboard')
 
+  const { search, role: roleFilter, ativo } = await searchParams
+
   const utilizadores = await prisma.utilizador.findMany({
+    where: {
+      ...(search && {
+        OR: [
+          { nome: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+        ],
+      }),
+      ...(roleFilter && { role: roleFilter as Role }),
+      ...(ativo !== undefined && { ativo: ativo === 'true' }),
+    },
     orderBy: [{ ativo: 'desc' }, { nome: 'asc' }],
     select: {
       id: true,
@@ -45,6 +63,10 @@ export default async function UtilizadoresPage() {
         </Button>
       </div>
 
+      <Suspense>
+        <UtilizadoresFilters />
+      </Suspense>
+
       {/* Desktop table */}
       <div className="hidden md:block rounded-xl border overflow-hidden bg-card">
         <table className="w-full text-sm">
@@ -59,7 +81,13 @@ export default async function UtilizadoresPage() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {utilizadores.map((u) => (
+            {utilizadores.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                  Nenhum utilizador encontrado
+                </td>
+              </tr>
+            ) : utilizadores.map((u) => (
               <tr key={u.id} className={cn('hover:bg-accent/30 transition-colors', !u.ativo && 'opacity-50')}>
                 <td className="px-4 py-3 font-medium">{u.nome}</td>
                 <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
@@ -92,7 +120,9 @@ export default async function UtilizadoresPage() {
 
       {/* Mobile cards */}
       <div className="md:hidden space-y-3">
-        {utilizadores.map((u) => (
+        {utilizadores.length === 0 ? (
+          <p className="text-center text-muted-foreground text-sm py-8">Nenhum utilizador encontrado</p>
+        ) : utilizadores.map((u) => (
           <div
             key={u.id}
             className={cn(

@@ -94,7 +94,7 @@ export default async function DashboardPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{total - emInvestigacao - vencidos < 0 ? 0 : total - emInvestigacao}</p>
+            <p className="text-2xl font-bold">{Math.max(0, total - emInvestigacao - vencidos)}</p>
             <p className="text-xs text-muted-foreground mt-1">Outros estados</p>
           </CardContent>
         </Card>

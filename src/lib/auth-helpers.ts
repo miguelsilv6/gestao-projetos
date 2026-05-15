@@ -2,6 +2,7 @@ import { auth } from '@/auth'
 import { hasPermission, type Permission } from '@/lib/rbac'
 import type { Role } from '@/generated/prisma/enums'
 import type { Prisma } from '@/generated/prisma/client'
+import { Prisma as PrismaLib } from '@/generated/prisma/client'
 
 export async function getSession() {
   const session = await auth()
@@ -38,6 +39,10 @@ export function apiError(message: string, status: number) {
 }
 
 export function handleApiError(error: unknown) {
+  // Prisma unique constraint violation → 409 Conflict
+  if (error instanceof PrismaLib.PrismaClientKnownRequestError && error.code === 'P2002') {
+    return apiError('Registo duplicado — verifique os campos únicos', 409)
+  }
   if (error instanceof Error) {
     const status = (error.cause as number) || 500
     if (status === 401) return apiError('Não autenticado', 401)

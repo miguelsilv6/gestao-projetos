@@ -7,6 +7,7 @@ import { hasPermission } from '@/lib/rbac'
 import { Button } from '@/components/ui/button'
 import { InqueritoFilters } from '@/components/inqueritos/inquerito-filters'
 import { InqueritoTable } from '@/components/inqueritos/inquerito-table'
+import { ExportButton } from '@/components/inqueritos/export-button'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import type { Role, EstadoInquerito, FaseProcessual } from '@/generated/prisma/enums'
@@ -39,6 +40,7 @@ export default async function InqueritosPage({
     ...(sp.search && {
       OR: [
         { nuipc: { contains: sp.search, mode: 'insensitive' as const } },
+        { nai: { contains: sp.search, mode: 'insensitive' as const } },
         { natureza: { contains: sp.search, mode: 'insensitive' as const } },
       ],
     }),
@@ -90,14 +92,19 @@ export default async function InqueritosPage({
           <h1 className="text-2xl font-bold tracking-tight">Inquéritos</h1>
           <p className="text-muted-foreground text-sm">{total} resultado{total !== 1 ? 's' : ''}</p>
         </div>
-        {canCreate && (
-          <Button size="sm">
-            <Link href="/inqueritos/novo" className="flex items-center gap-1.5">
-              <Plus className="h-4 w-4" />
-              Novo
-            </Link>
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <Suspense fallback={null}>
+            <ExportButton />
+          </Suspense>
+          {canCreate && (
+            <Button size="sm">
+              <Link href="/inqueritos/novo" className="flex items-center gap-1.5">
+                <Plus className="h-4 w-4" />
+                Novo
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <Suspense fallback={null}>

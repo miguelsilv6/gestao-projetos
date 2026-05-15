@@ -7,6 +7,7 @@ import {
   BarChart3,
   Bell,
   Settings,
+  ClipboardList,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -52,6 +53,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Utilizadores',
     href: '/utilizadores',
     icon: Users,
+    roles: ['ADMINISTRACAO'],
+  },
+  {
+    label: 'Audit Log',
+    href: '/auditlog',
+    icon: ClipboardList,
     roles: ['ADMINISTRACAO'],
   },
   {

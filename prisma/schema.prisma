@@ -72,11 +72,13 @@ model Utilizador {
 
   @@index([brigadaId])
   @@index([role])
+  @@index([brigadaId, role])
 }
 
 model Inquerito {
   id             String          @id @default(cuid())
   nuipc          String          @unique
+  nai            String?         @unique
   natureza       String
   estado         EstadoInquerito @default(ABERTO)
   faseProcessual FaseProcessual  @default(INQUERITO)
@@ -102,6 +104,7 @@ model Inquerito {
   @@index([faseProcessual])
   @@index([dataPrazo])
   @@index([nuipc])
+  @@index([nai])
 }
 
 model Atividade {
@@ -118,6 +121,7 @@ model Atividade {
 
   @@index([inqueritoid])
   @@index([utilizadorId])
+  @@index([inqueritoid, dataRealizacao])
 }
 
 model Notificacao {
@@ -136,6 +140,7 @@ model Notificacao {
   inqueritoid String?
 
   @@index([utilizadorId, lida])
+  @@index([utilizadorId, createdAt])
   @@index([createdAt])
 }
 
@@ -161,6 +166,16 @@ model ConfiguracaoSistema {
   emailRemetenteNome String   @default("GPI Sistema")
   emailRemetenteAddr String   @default("noreply@gpi.pt")
   updatedAt          DateTime @updatedAt
+}
+
+model AtividadePadrao {
+  id        String   @id @default(cuid())
+  nome      String   @unique
+  descricao String?
+  ativa     Boolean  @default(true)
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Sessao {

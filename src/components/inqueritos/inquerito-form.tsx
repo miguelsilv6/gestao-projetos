@@ -99,6 +99,19 @@ export function InqueritoForm({
             </div>
 
             <div className="space-y-1.5">
+              <Label htmlFor="nai">NAI</Label>
+              <Input
+                id="nai"
+                placeholder="Número de auto de inquérito"
+                className="font-mono"
+                {...register('nai')}
+              />
+              {errors.nai && (
+                <p className="text-xs text-red-600">{errors.nai.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
               <Label htmlFor="dataAbertura">Data de abertura *</Label>
               <Input id="dataAbertura" type="date" {...register('dataAbertura')} />
               {errors.dataAbertura && (

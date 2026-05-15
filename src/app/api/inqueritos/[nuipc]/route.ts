@@ -72,6 +72,7 @@ export async function PUT(
       where: { nuipc },
       data: {
         nuipc: data.nuipc,
+        nai: data.nai || null,
         natureza: data.natureza,
         estado: data.estado,
         faseProcessual: data.faseProcessual,

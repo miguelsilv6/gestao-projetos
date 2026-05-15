@@ -12,6 +12,7 @@ import Link from 'next/link'
 interface Inquerito {
   id: string
   nuipc: string
+  nai: string | null
   natureza: string
   estado: string
   faseProcessual: string
@@ -118,6 +119,11 @@ export function InqueritoTable({ inqueritos, canBulk, canTransfer, inspetores, b
                         {overdue && <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
                         {inq.nuipc}
                       </Link>
+                      {inq.nai && (
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                          NAI: {inq.nai}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3 max-w-[200px] truncate">{inq.natureza}</td>
                     <td className="px-4 py-3">
@@ -152,6 +158,7 @@ export function InqueritoTable({ inqueritos, canBulk, canTransfer, inspetores, b
             <InqueritoCard
               key={inq.id}
               nuipc={inq.nuipc}
+              nai={inq.nai}
               natureza={inq.natureza}
               estado={inq.estado as never}
               faseProcessual={inq.faseProcessual as never}

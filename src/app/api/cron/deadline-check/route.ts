@@ -1,11 +1,19 @@
 import { NextRequest } from 'next/server'
+import { timingSafeEqual, createHash } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 
 function authorized(req: NextRequest) {
   const secret = process.env.CRON_SECRET
   if (!secret) return false
-  return req.headers.get('x-cron-secret') === secret
+  const provided = req.headers.get('x-cron-secret') ?? ''
+  try {
+    const a = createHash('sha256').update(secret).digest()
+    const b = createHash('sha256').update(provided).digest()
+    return timingSafeEqual(a, b)
+  } catch {
+    return false
+  }
 }
 
 export async function POST(req: NextRequest) {

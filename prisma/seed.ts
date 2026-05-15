@@ -22,6 +22,7 @@ async function main() {
     create: { nome: 'Brigada Beta', descricao: 'Brigada de investigação criminal B' },
   })
 
+  const seedPassword = process.env.SEED_PASSWORD ?? 'Admin123!'
   const hash = (pw: string) => bcrypt.hash(pw, 12)
 
   // Utilizadores (1 por role)
@@ -31,7 +32,7 @@ async function main() {
     create: {
       nome: 'Administrador Sistema',
       email: 'admin@gpi.pt',
-      passwordHash: await hash('Admin123!'),
+      passwordHash: await hash(seedPassword),
       role: 'ADMINISTRACAO',
       ativo: true,
     },
@@ -43,7 +44,7 @@ async function main() {
     create: {
       nome: 'Carlos Coordenador',
       email: 'coordenador@gpi.pt',
-      passwordHash: await hash('Admin123!'),
+      passwordHash: await hash(seedPassword),
       role: 'COORDENADOR',
       ativo: true,
     },
@@ -55,7 +56,7 @@ async function main() {
     create: {
       nome: 'Ana Inspetora Chefe',
       email: 'chefe@gpi.pt',
-      passwordHash: await hash('Admin123!'),
+      passwordHash: await hash(seedPassword),
       role: 'INSPETOR_CHEFE',
       brigadaId: brigadaAlfa.id,
       chefeSupremo: true,
@@ -69,7 +70,7 @@ async function main() {
     create: {
       nome: 'João Inspetor',
       email: 'inspetor@gpi.pt',
-      passwordHash: await hash('Admin123!'),
+      passwordHash: await hash(seedPassword),
       role: 'INSPETOR',
       brigadaId: brigadaAlfa.id,
       ativo: true,
@@ -82,7 +83,7 @@ async function main() {
     create: {
       nome: 'Sofia Estatística',
       email: 'estatistica@gpi.pt',
-      passwordHash: await hash('Admin123!'),
+      passwordHash: await hash(seedPassword),
       role: 'ESTATISTICA',
       ativo: true,
     },
@@ -178,11 +179,11 @@ async function main() {
   console.log('✅ Seed concluído!')
   console.log('')
   console.log('Utilizadores criados:')
-  console.log('  admin@gpi.pt         → ADMINISTRACAO  (pw: Admin123!)')
-  console.log('  coordenador@gpi.pt   → COORDENADOR    (pw: Admin123!)')
-  console.log('  chefe@gpi.pt         → INSPETOR_CHEFE (pw: Admin123!)')
-  console.log('  inspetor@gpi.pt      → INSPETOR       (pw: Admin123!)')
-  console.log('  estatistica@gpi.pt   → ESTATISTICA    (pw: Admin123!)')
+  console.log(`  admin@gpi.pt         → ADMINISTRACAO  (pw: ${seedPassword})`)
+  console.log(`  coordenador@gpi.pt   → COORDENADOR    (pw: ${seedPassword})`)
+  console.log(`  chefe@gpi.pt         → INSPETOR_CHEFE (pw: ${seedPassword})`)
+  console.log(`  inspetor@gpi.pt      → INSPETOR       (pw: ${seedPassword})`)
+  console.log(`  estatistica@gpi.pt   → ESTATISTICA    (pw: ${seedPassword})`)
 }
 
 main()

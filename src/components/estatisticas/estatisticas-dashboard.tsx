@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { EstadoBarChart, FasePieChart, BrigadaBarChart, NaturezaBarChart } from './charts'
 import { AlertTriangle, FileText, Users } from 'lucide-react'
 
@@ -41,31 +44,39 @@ export function EstatisticasDashboard({ brigadas }: { brigadas: Brigada[] }) {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <select
-          value={brigadaFilter}
-          onChange={(e) => setBrigadaFilter(e.target.value)}
-          className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-        >
-          <option value="">Todas as brigadas</option>
-          {brigadas.map((b) => (
-            <option key={b.id} value={b.id}>{b.nome}</option>
-          ))}
-        </select>
-        <input
-          type="date"
-          value={dataInicio}
-          onChange={(e) => setDataInicio(e.target.value)}
-          className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          placeholder="Data início"
-        />
-        <input
-          type="date"
-          value={dataFim}
-          onChange={(e) => setDataFim(e.target.value)}
-          className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          placeholder="Data fim"
-        />
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Brigada</Label>
+          <Select value={brigadaFilter || 'all'} onValueChange={(v) => setBrigadaFilter(!v || v === 'all' ? '' : v)}>
+            <SelectTrigger className="h-9 w-[180px] text-sm">
+              <SelectValue placeholder="Todas as brigadas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as brigadas</SelectItem>
+              {brigadas.map((b) => (
+                <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Data início</Label>
+          <Input
+            type="date"
+            value={dataInicio}
+            onChange={(e) => setDataInicio(e.target.value)}
+            className="h-9 w-[150px] text-sm"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Data fim</Label>
+          <Input
+            type="date"
+            value={dataFim}
+            onChange={(e) => setDataFim(e.target.value)}
+            className="h-9 w-[150px] text-sm"
+          />
+        </div>
       </div>
 
       {loading ? (

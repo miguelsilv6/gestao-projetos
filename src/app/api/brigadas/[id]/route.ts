@@ -67,6 +67,19 @@ export async function PUT(
       data: parsed.data,
     })
 
+    // Audit log when deactivating a brigada
+    if (parsed.data.ativa === false && brigada.ativa) {
+      await prisma.auditLog.create({
+        data: {
+          acao: 'DEACTIVATE_BRIGADA',
+          entidade: 'Brigada',
+          entidadeId: id,
+          utilizadorId: session.user.id,
+          detalhes: { nome: brigada.nome },
+        },
+      })
+    }
+
     return Response.json(updated)
   } catch (error) {
     return handleApiError(error)

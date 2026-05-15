@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 
 interface InqueritoCardProps {
   nuipc: string
+  nai?: string | null
   natureza: string
   estado: EstadoInquerito
   faseProcessual: FaseProcessual
@@ -19,6 +20,7 @@ interface InqueritoCardProps {
 
 export function InqueritoCard({
   nuipc,
+  nai,
   natureza,
   estado,
   faseProcessual,
@@ -42,6 +44,9 @@ export function InqueritoCard({
               <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />
             )}
           </div>
+          {nai && (
+            <p className="text-xs font-mono text-muted-foreground mt-0.5">NAI: {nai}</p>
+          )}
           <p className="text-sm text-muted-foreground mt-0.5 truncate">{natureza}</p>
         </div>
         <div className="flex flex-col gap-1 items-end shrink-0">
