@@ -196,7 +196,14 @@ export default async function InqueritoDetailPage({
                           {formatDateTime(atv.dataRealizacao)}
                         </span>
                       </div>
-                      <p className="text-sm mt-1">{atv.descricao}</p>
+                      <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                        {atv.descricao}
+                      </span>
+                      {atv.observacoes && (
+                        <p className="text-sm mt-1.5 text-muted-foreground whitespace-pre-wrap">
+                          {atv.observacoes}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

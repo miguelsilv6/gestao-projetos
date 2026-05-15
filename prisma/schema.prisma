@@ -110,6 +110,7 @@ model Inquerito {
 model Atividade {
   id             String   @id @default(cuid())
   descricao      String
+  observacoes    String?
   dataRealizacao DateTime @default(now())
   createdAt      DateTime @default(now())
 

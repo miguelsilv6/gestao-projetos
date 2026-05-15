@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronLeft, Loader2 } from 'lucide-react'
+import { ChevronLeft, Loader2, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { slugToNuipc, nuipcToSlug } from '@/lib/utils'
@@ -24,7 +24,8 @@ interface AtividadePadrao {
 }
 
 const schema = z.object({
-  descricao: z.string().min(1, 'Descrição obrigatória'),
+  atividadePadraoId: z.string().min(1, 'Selecione uma atividade'),
+  observacoes: z.string().max(2000).optional(),
   dataRealizacao: z.string().optional(),
 })
 
@@ -37,6 +38,7 @@ export default function AddAtividadePage() {
   const nuipc = slugToNuipc(slug)
   const [inqueritoid, setInqueritoid] = useState<string | null>(null)
   const [atividadesPadrao, setAtividadesPadrao] = useState<AtividadePadrao[]>([])
+  const [loadingPadrao, setLoadingPadrao] = useState(true)
 
   useEffect(() => {
     fetch(`/api/inqueritos/${slug}`)
@@ -47,7 +49,8 @@ export default function AddAtividadePage() {
     fetch('/api/atividades-padrao')
       .then((r) => r.json())
       .then((d: AtividadePadrao[]) => setAtividadesPadrao(d.filter((a) => a.ativa)))
-      .catch(() => {/* silently ignore – templates are optional */})
+      .catch(() => {})
+      .finally(() => setLoadingPadrao(false))
   }, [slug])
 
   const defaultDatetime = new Date().toISOString().slice(0, 16)
@@ -55,17 +58,16 @@ export default function AddAtividadePage() {
   const {
     register,
     handleSubmit,
-    setValue,
+    control,
+    watch,
     formState: { errors, isSubmitting },
-  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { dataRealizacao: defaultDatetime } })
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { dataRealizacao: defaultDatetime },
+  })
 
-  function handleSelectPadrao(id: string | null) {
-    if (!id || id === 'none') return
-    const padrao = atividadesPadrao.find((a) => a.id === id)
-    if (!padrao) return
-    const text = padrao.descricao ? `${padrao.nome}\n\n${padrao.descricao}` : padrao.nome
-    setValue('descricao', text, { shouldValidate: true, shouldDirty: true })
-  }
+  const selectedId = watch('atividadePadraoId')
+  const selectedPadrao = atividadesPadrao.find((a) => a.id === selectedId)
 
   async function onSubmit(data: FormData) {
     if (!inqueritoid) return
@@ -110,6 +112,8 @@ export default function AddAtividadePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+
+            {/* Date */}
             <div className="space-y-1.5">
               <Label htmlFor="dataRealizacao">Data de realização</Label>
               <Input
@@ -119,43 +123,82 @@ export default function AddAtividadePage() {
               />
             </div>
 
-            {atividadesPadrao.length > 0 && (
-              <div className="space-y-1.5">
-                <Label>Atividade padrão</Label>
-                <Select onValueChange={handleSelectPadrao} defaultValue="none">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar modelo..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Sem modelo —</SelectItem>
-                    {atividadesPadrao.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Selecionar um modelo pré-preenche a descrição — pode editar livremente.
-                </p>
-              </div>
-            )}
-
+            {/* Activity type dropdown */}
             <div className="space-y-1.5">
-              <Label htmlFor="descricao">Descrição *</Label>
+              <Label>
+                Tipo de atividade <span className="text-red-500">*</span>
+              </Label>
+
+              {loadingPadrao ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground h-9">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  A carregar...
+                </div>
+              ) : atividadesPadrao.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground flex items-start gap-2">
+                  <Settings className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>
+                    Nenhuma atividade padrão configurada.{' '}
+                    <Link
+                      href="/configuracoes"
+                      className="text-foreground underline underline-offset-2 hover:no-underline"
+                    >
+                      Configurar em Configurações → Atividades
+                    </Link>
+                  </span>
+                </div>
+              ) : (
+                <Controller
+                  name="atividadePadraoId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                      <SelectTrigger className={errors.atividadePadraoId ? 'border-red-500' : ''}>
+                        <SelectValue placeholder="Selecionar tipo de atividade..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {atividadesPadrao.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              )}
+
+              {errors.atividadePadraoId && (
+                <p className="text-xs text-red-600">{errors.atividadePadraoId.message}</p>
+              )}
+
+              {/* Show the template description as a hint */}
+              {selectedPadrao?.descricao && (
+                <p className="text-xs text-muted-foreground italic">
+                  {selectedPadrao.descricao}
+                </p>
+              )}
+            </div>
+
+            {/* Observations */}
+            <div className="space-y-1.5">
+              <Label htmlFor="observacoes">Observações</Label>
               <Textarea
-                id="descricao"
-                placeholder="Descreva a atividade realizada..."
-                rows={6}
-                {...register('descricao')}
+                id="observacoes"
+                placeholder="Notas adicionais sobre esta atividade (opcional)..."
+                rows={5}
+                {...register('observacoes')}
               />
-              {errors.descricao && (
-                <p className="text-xs text-red-600">{errors.descricao.message}</p>
+              {errors.observacoes && (
+                <p className="text-xs text-red-600">{errors.observacoes.message}</p>
               )}
             </div>
 
             <div className="flex gap-3">
-              <Button type="submit" disabled={isSubmitting || !inqueritoid}>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !inqueritoid || atividadesPadrao.length === 0}
+              >
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Registar
               </Button>
