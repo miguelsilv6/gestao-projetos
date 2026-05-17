@@ -38,6 +38,7 @@ export default async function InqueritoDetailPage({
   const inquerito = await prisma.inquerito.findFirst({
     where: { nuipc, deletedAt: null, ...roleWhere },
     include: {
+      estado: { select: { id: true, codigo: true, nome: true, cor: true, terminal: true } },
       brigada: { select: { id: true, nome: true } },
       inspetor: { select: { id: true, nome: true, email: true } },
       _count: { select: { atividades: true } },
@@ -55,13 +56,28 @@ export default async function InqueritoDetailPage({
     include: { realizadaPor: { select: { id: true, nome: true } } },
   })
 
-  // Aggregated summary by type (uses ALL activities, not just the page)
-  const summary = await prisma.atividade.groupBy({
-    by: ['descricao'],
-    where: { inqueritoid: inquerito.id },
-    _count: { _all: true },
-    _sum: { quantidade: true },
-  })
+  // Aggregated summary by type (uses ALL activities, not just the page).
+  // Filtered to only count activity types that are flagged
+  // `contaParaEstatistica`. Atividades whose padrão was deleted are NOT
+  // included either (they can't be matched).
+  const nomesQueContam = (
+    await prisma.atividadePadrao.findMany({
+      where: { contaParaEstatistica: true },
+      select: { nome: true },
+    })
+  ).map((p) => p.nome)
+
+  const summary = nomesQueContam.length
+    ? await prisma.atividade.groupBy({
+        by: ['descricao'],
+        where: {
+          inqueritoid: inquerito.id,
+          descricao: { in: nomesQueContam },
+        },
+        _count: { _all: true },
+        _sum: { quantidade: true },
+      })
+    : []
 
   const totalAtividades = inquerito._count.atividades
   const totalAtivPages = Math.ceil(totalAtividades / ATIVIDADES_PAGE_SIZE)

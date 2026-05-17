@@ -15,14 +15,6 @@ enum Role {
   ADMINISTRACAO
 }
 
-enum EstadoInquerito {
-  ABERTO
-  EM_INVESTIGACAO
-  SUSPENSO
-  CONCLUIDO
-  ARQUIVADO
-}
-
 enum FaseProcessual {
   INQUERITO
   INSTRUCAO
@@ -82,19 +74,21 @@ model Utilizador {
 }
 
 model Inquerito {
-  id             String          @id @default(cuid())
-  nuipc          String          @unique
-  nai            String?         @unique
+  id             String         @id @default(cuid())
+  nuipc          String         @unique
+  nai            String?        @unique
   natureza       String
-  estado         EstadoInquerito @default(ABERTO)
-  faseProcessual FaseProcessual  @default(INQUERITO)
+  faseProcessual FaseProcessual @default(INQUERITO)
   dataAbertura   DateTime
   dataPrazo      DateTime?
   dataConclusao  DateTime?
   notas          String?
   deletedAt      DateTime?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  estado   EstadoInquerito @relation(fields: [estadoId], references: [id])
+  estadoId String
 
   brigada   Brigada @relation(fields: [brigadaId], references: [id])
   brigadaId String
@@ -107,7 +101,7 @@ model Inquerito {
 
   @@index([brigadaId])
   @@index([inspetorId])
-  @@index([estado])
+  @@index([estadoId])
   @@index([faseProcessual])
   @@index([dataPrazo])
   @@index([nuipc])
@@ -116,6 +110,24 @@ model Inquerito {
   @@index([brigadaId, updatedAt(sort: Desc)])
   @@index([inspetorId, updatedAt(sort: Desc)])
   @@index([deletedAt])
+}
+
+model EstadoInquerito {
+  id        String   @id @default(cuid())
+  codigo    String   @unique
+  nome      String
+  descricao String?
+  ordem     Int      @default(0)
+  terminal  Boolean  @default(false)
+  cor       String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inqueritos                   Inquerito[]
+  atividadesPadraoQueTransitam AtividadePadrao[]
+
+  @@index([ativo, ordem])
 }
 
 model Atividade {
@@ -194,24 +206,38 @@ model LoginAttempt {
 }
 
 model ConfiguracaoSistema {
-  id                 String   @id @default("singleton")
-  backupScheduleCron String   @default("0 2 * * *")
-  prazoAlertaDias    Int      @default(7)
-  emailRemetenteNome String   @default("GPI Sistema")
-  emailRemetenteAddr String   @default("noreply@gpi.pt")
-  updatedAt          DateTime @updatedAt
+  id                              String   @id @default("singleton")
+  backupScheduleCron              String   @default("0 2 * * *")
+  prazoAlertaDias                 Int      @default(7)
+  emailRemetenteNome              String   @default("GPI Sistema")
+  emailRemetenteAddr              String   @default("noreply@gpi.pt")
+  // Default estado codigos applied to /inqueritos when the user has no explicit
+  // filter set on the URL. Stored as codigos for stability across renames.
+  inqueritoFiltroEstadosDefault   String[] @default([])
+  updatedAt                       DateTime @updatedAt
 }
 
 model AtividadePadrao {
-  id            String   @id @default(cuid())
-  nome          String   @unique
-  descricao     String?
-  ativa         Boolean  @default(true)
-  ordem         Int      @default(0)
-  temPrazo      Boolean  @default(false)
-  temQuantidade Boolean  @default(false)
+  id                    String   @id @default(cuid())
+  nome                  String   @unique
+  descricao             String?
+  ativa                 Boolean  @default(true)
+  ordem                 Int      @default(0)
+  temPrazo              Boolean  @default(false)
+  temQuantidade         Boolean  @default(false)
+  // When false, activities of this type are excluded from analytical
+  // aggregations (e.g. "Resumo por tipo" in the inquérito detail). The total
+  // count of activities is unaffected.
+  contaParaEstatistica  Boolean  @default(true)
+  // Optional auto-transition: when an Atividade with this padrão's `nome` is
+  // created, the parent inquérito is moved to this estado (subject to the
+  // state machine). Null means no transition.
+  transicaoEstado   EstadoInquerito? @relation(fields: [transicaoEstadoId], references: [id], onDelete: SetNull)
+  transicaoEstadoId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([transicaoEstadoId])
 }
 
 model Sessao {

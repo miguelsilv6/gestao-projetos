@@ -16,8 +16,12 @@ export type Permission =
   | 'inquerito:delete'
   | 'inquerito:export'
   | 'inquerito:audit:read'
+  | 'inquerito:estados:manage'
   | 'atividade:create:own'
   | 'atividade:create:brigade'
+  | 'prazo:read:own'
+  | 'prazo:read:brigade'
+  | 'prazo:read:all'
   | 'estatistica:read'
   | 'brigada:read'
   | 'brigada:manage'
@@ -29,6 +33,7 @@ const PERMISSIONS: Record<Role, Permission[]> = {
     'inquerito:read:own',
     'inquerito:edit:own',
     'atividade:create:own',
+    'prazo:read:own',
   ],
   INSPETOR_CHEFE: [
     'inquerito:read:own',
@@ -42,6 +47,9 @@ const PERMISSIONS: Record<Role, Permission[]> = {
     'inquerito:audit:read',
     'atividade:create:own',
     'atividade:create:brigade',
+    'prazo:read:own',
+    'prazo:read:brigade',
+    'estatistica:read',
     'brigada:read',
   ],
   COORDENADOR: [
@@ -61,6 +69,9 @@ const PERMISSIONS: Record<Role, Permission[]> = {
     'inquerito:audit:read',
     'atividade:create:own',
     'atividade:create:brigade',
+    'prazo:read:own',
+    'prazo:read:brigade',
+    'prazo:read:all',
     'estatistica:read',
     'brigada:read',
     'brigada:manage',
@@ -87,8 +98,12 @@ const PERMISSIONS: Record<Role, Permission[]> = {
     'inquerito:delete',
     'inquerito:export',
     'inquerito:audit:read',
+    'inquerito:estados:manage',
     'atividade:create:own',
     'atividade:create:brigade',
+    'prazo:read:own',
+    'prazo:read:brigade',
+    'prazo:read:all',
     'estatistica:read',
     'brigada:read',
     'brigada:manage',

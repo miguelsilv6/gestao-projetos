@@ -1,70 +1,252 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { EstadoBarChart, FasePieChart, BrigadaBarChart, NaturezaBarChart } from './charts'
-import { AlertTriangle, FileText, Users } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  EstadoBarChart,
+  FasePieChart,
+  BrigadaBarChart,
+  InspetorBarChart,
+  NaturezaBarChart,
+} from './charts'
+import { AlertTriangle, FileText, Users, X } from 'lucide-react'
 
 interface Brigada { id: string; nome: string }
+interface Inspetor { id: string; nome: string; brigadaId: string | null }
 
 interface Stats {
   total: number
   vencidos: number
   semInspetor: number
-  porEstado: { estado: string; count: number }[]
+  porEstado: { estadoId: string; codigo: string; nome: string; cor: string | null; count: number }[]
   porFase: { fase: string; count: number }[]
   porBrigada: { brigadaId: string; nome: string; count: number }[]
+  porInspetor: { inspetorId: string; nome: string; count: number }[]
   porNatureza: { natureza: string; count: number }[]
 }
 
-export function EstatisticasDashboard({ brigadas }: { brigadas: Brigada[] }) {
+interface Props {
+  brigadas: Brigada[]
+  inspetores: Inspetor[]
+  /** When true, the brigada filter is hidden and the API enforces own-brigade scope. */
+  lockedToBrigada?: boolean
+}
+
+type Preset = 'custom' | 'this_month' | 'last_month' | 'this_year' | 'last_30'
+
+const PRESET_LABELS: Record<Preset, string> = {
+  custom: 'Período personalizado',
+  this_month: 'Este mês',
+  last_month: 'Mês passado',
+  last_30: 'Últimos 30 dias',
+  this_year: 'Este ano',
+}
+
+/** Returns [dataInicio, dataFim] (yyyy-mm-dd) for a preset, or [empty, empty]. */
+function rangeForPreset(preset: Preset): [string, string] {
+  const now = new Date()
+  if (preset === 'this_month') {
+    return [
+      fmt(new Date(now.getFullYear(), now.getMonth(), 1)),
+      fmt(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+    ]
+  }
+  if (preset === 'last_month') {
+    return [
+      fmt(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      fmt(new Date(now.getFullYear(), now.getMonth(), 0)),
+    ]
+  }
+  if (preset === 'last_30') {
+    const from = new Date(now)
+    from.setDate(from.getDate() - 29)
+    return [fmt(from), fmt(now)]
+  }
+  if (preset === 'this_year') {
+    return [
+      fmt(new Date(now.getFullYear(), 0, 1)),
+      fmt(new Date(now.getFullYear(), 11, 31)),
+    ]
+  }
+  return ['', '']
+}
+
+function fmt(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+export function EstatisticasDashboard({
+  brigadas,
+  inspetores,
+  lockedToBrigada = false,
+}: Props) {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [brigadaFilter, setBrigadaFilter] = useState('')
+  const [inspetorFilter, setInspetorFilter] = useState('')
+  const [preset, setPreset] = useState<Preset>('custom')
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
+
+  // When a brigada is selected, restrict the inspetor list to that brigada.
+  const filteredInspetores = useMemo(() => {
+    if (!brigadaFilter) return inspetores
+    return inspetores.filter((i) => i.brigadaId === brigadaFilter)
+  }, [brigadaFilter, inspetores])
+
+  // Atomic handler: change brigada + reset inspetor in the same render so the
+  // fetchStats effect only fires once with a coherent filter combination.
+  function changeBrigada(next: string) {
+    setBrigadaFilter(next)
+    if (
+      inspetorFilter &&
+      !inspetores.some((i) => i.id === inspetorFilter && i.brigadaId === next)
+    ) {
+      setInspetorFilter('')
+    }
+  }
+
+  // When a preset is chosen, fill the dates; "custom" preserves manual values.
+  function applyPreset(p: Preset) {
+    setPreset(p)
+    if (p === 'custom') return
+    const [from, to] = rangeForPreset(p)
+    setDataInicio(from)
+    setDataFim(to)
+  }
+
+  // If the user manually edits a date while a preset is active, drop back to "custom".
+  function onDataChange(setter: (v: string) => void, value: string) {
+    setter(value)
+    if (preset !== 'custom') setPreset('custom')
+  }
 
   const fetchStats = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
-    if (brigadaFilter) params.set('brigadaId', brigadaFilter)
+    if (brigadaFilter && !lockedToBrigada) params.set('brigadaId', brigadaFilter)
+    if (inspetorFilter) params.set('inspetorId', inspetorFilter)
     if (dataInicio) params.set('dataInicio', dataInicio)
     if (dataFim) params.set('dataFim', dataFim)
 
     const res = await fetch(`/api/estatisticas?${params}`)
     if (res.ok) setStats(await res.json())
+    else setStats(null)
     setLoading(false)
-  }, [brigadaFilter, dataInicio, dataFim])
+  }, [brigadaFilter, inspetorFilter, dataInicio, dataFim, lockedToBrigada])
 
   useEffect(() => { fetchStats() }, [fetchStats])
+
+  const hasDateFilter = !!(dataInicio || dataFim)
+  const periodLabel = useMemo(() => {
+    if (preset !== 'custom') return PRESET_LABELS[preset]
+    if (!hasDateFilter) return 'Todo o histórico'
+    return `${dataInicio || '…'} → ${dataFim || '…'}`
+  }, [preset, dataInicio, dataFim, hasDateFilter])
+
+  function clearFilters() {
+    setBrigadaFilter('')
+    setInspetorFilter('')
+    setPreset('custom')
+    setDataInicio('')
+    setDataFim('')
+  }
+
+  const hasAnyFilter =
+    (!!brigadaFilter && !lockedToBrigada) || !!inspetorFilter || hasDateFilter
 
   return (
     <div className="space-y-4">
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
+        {!lockedToBrigada && (
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Brigada</Label>
+            <Select
+              value={brigadaFilter || 'all'}
+              onValueChange={(v) => changeBrigada(!v || v === 'all' ? '' : v)}
+            >
+              <SelectTrigger className="h-9 w-[180px] text-sm">
+                <SelectValue placeholder="Todas as brigadas">
+                  {(v: string) =>
+                    !v || v === 'all'
+                      ? 'Todas as brigadas'
+                      : brigadas.find((b) => b.id === v)?.nome ?? 'Todas as brigadas'
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as brigadas</SelectItem>
+                {brigadas.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {filteredInspetores.length > 0 && (
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Inspetor</Label>
+            <Select
+              value={inspetorFilter || 'all'}
+              onValueChange={(v) => setInspetorFilter(!v || v === 'all' ? '' : v)}
+            >
+              <SelectTrigger className="h-9 w-[180px] text-sm">
+                <SelectValue placeholder="Todos os inspetores">
+                  {(v: string) =>
+                    !v || v === 'all'
+                      ? 'Todos os inspetores'
+                      : filteredInspetores.find((i) => i.id === v)?.nome ??
+                        'Todos os inspetores'
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os inspetores</SelectItem>
+                {filteredInspetores.map((i) => (
+                  <SelectItem key={i.id} value={i.id}>{i.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Brigada</Label>
-          <Select value={brigadaFilter || 'all'} onValueChange={(v) => setBrigadaFilter(!v || v === 'all' ? '' : v)}>
-            <SelectTrigger className="h-9 w-[180px] text-sm">
-              <SelectValue placeholder="Todas as brigadas" />
+          <Label className="text-xs text-muted-foreground">Período</Label>
+          <Select value={preset} onValueChange={(v) => applyPreset(v as Preset)}>
+            <SelectTrigger className="h-9 w-[170px] text-sm">
+              <SelectValue placeholder="Período">
+                {(v: string) => PRESET_LABELS[v as Preset] ?? 'Período'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas as brigadas</SelectItem>
-              {brigadas.map((b) => (
-                <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>
+              {(Object.keys(PRESET_LABELS) as Preset[]).map((p) => (
+                <SelectItem key={p} value={p}>{PRESET_LABELS[p]}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Data início</Label>
           <Input
             type="date"
             value={dataInicio}
-            onChange={(e) => setDataInicio(e.target.value)}
+            onChange={(e) => onDataChange(setDataInicio, e.target.value)}
             className="h-9 w-[150px] text-sm"
           />
         </div>
@@ -73,11 +255,27 @@ export function EstatisticasDashboard({ brigadas }: { brigadas: Brigada[] }) {
           <Input
             type="date"
             value={dataFim}
-            onChange={(e) => setDataFim(e.target.value)}
+            onChange={(e) => onDataChange(setDataFim, e.target.value)}
             className="h-9 w-[150px] text-sm"
           />
         </div>
+
+        {hasAnyFilter && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="gap-1.5 text-muted-foreground h-9"
+          >
+            <X className="h-3.5 w-3.5" />
+            Limpar
+          </Button>
+        )}
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        A mostrar dados de: <span className="font-medium text-foreground">{periodLabel}</span>
+      </p>
 
       {loading ? (
         <div className="text-sm text-muted-foreground py-8 text-center">A carregar...</div>
@@ -136,13 +334,23 @@ export function EstatisticasDashboard({ brigadas }: { brigadas: Brigada[] }) {
 
           {/* Charts row 2 */}
           <div className="grid gap-4 md:grid-cols-2">
-            {stats.porBrigada.length > 0 && (
+            {!lockedToBrigada && stats.porBrigada.length > 1 && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Por Brigada</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <BrigadaBarChart data={stats.porBrigada} />
+                </CardContent>
+              </Card>
+            )}
+            {stats.porInspetor.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Por Inspetor</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <InspetorBarChart data={stats.porInspetor} />
                 </CardContent>
               </Card>
             )}
@@ -158,7 +366,11 @@ export function EstatisticasDashboard({ brigadas }: { brigadas: Brigada[] }) {
             )}
           </div>
         </>
-      ) : null}
+      ) : (
+        <div className="text-sm text-muted-foreground py-8 text-center">
+          Não foi possível carregar as estatísticas.
+        </div>
+      )}
     </div>
   )
 }

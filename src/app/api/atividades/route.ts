@@ -1,8 +1,12 @@
 import { NextRequest } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { getSession, handleApiError, apiError } from '@/lib/auth-helpers'
 import { hasPermission } from '@/lib/rbac'
+import { getRequestInfo } from '@/lib/request-info'
+import { applyAtividadeTransicao } from '@/lib/atividade-transicao'
 import { notifyAtividadeAdicionada } from '@/lib/notifications'
+import { nuipcToSlug } from '@/lib/utils'
 import { z } from 'zod'
 import type { Role } from '@/generated/prisma/enums'
 
@@ -37,15 +41,17 @@ export async function POST(req: NextRequest) {
     // Find inquiry and check access
     const inquerito = await prisma.inquerito.findUnique({
       where: { id: inqueritoid },
-      include: { inspetor: { select: { id: true, email: true, nome: true } } },
+      include: {
+        inspetor: { select: { id: true, email: true, nome: true } },
+        estado: { select: { id: true, codigo: true, terminal: true, ativo: true } },
+      },
     })
     if (!inquerito || inquerito.deletedAt) return apiError('Inquérito não encontrado', 404)
 
-    // Block on terminal states — activities are investigative records,
-    // they shouldn't be added to closed/archived cases.
-    if (inquerito.estado === 'CONCLUIDO' || inquerito.estado === 'ARQUIVADO') {
+    // Block on terminal states — activities are investigative records.
+    if (inquerito.estado.terminal) {
       return apiError(
-        'Não é possível adicionar atividades a um inquérito concluído ou arquivado',
+        'Não é possível adicionar atividades a um inquérito em estado terminal',
         409,
       )
     }
@@ -58,24 +64,66 @@ export async function POST(req: NextRequest) {
 
     if (!canAdd) return apiError('Sem permissão para adicionar atividade neste inquérito', 403)
 
-    const atividade = await prisma.atividade.create({
-      data: {
-        descricao,
-        observacoes: observacoes ?? null,
-        quantidade: quantidade ?? null,
-        dataPrazo: dataPrazo ? new Date(dataPrazo) : null,
-        alertaDias1: alertaDias1 ?? null,
-        alertaDias2: alertaDias2 ?? null,
-        dataRealizacao: dataRealizacao ? new Date(dataRealizacao) : new Date(),
-        inqueritoid,
+    const dataRealizacaoDate = dataRealizacao ? new Date(dataRealizacao) : new Date()
+    const { ip, userAgent } = getRequestInfo(req)
+
+    // Wrap creation + audit + potential state transition in a single
+    // transaction so they remain consistent.
+    const { atividade, transicao } = await prisma.$transaction(async (tx) => {
+      const created = await tx.atividade.create({
+        data: {
+          descricao,
+          observacoes: observacoes ?? null,
+          quantidade: quantidade ?? null,
+          dataPrazo: dataPrazo ? new Date(dataPrazo) : null,
+          alertaDias1: alertaDias1 ?? null,
+          alertaDias2: alertaDias2 ?? null,
+          dataRealizacao: dataRealizacaoDate,
+          inqueritoid,
+          utilizadorId: session.user.id,
+        },
+        include: {
+          realizadaPor: { select: { id: true, nome: true } },
+        },
+      })
+
+      await tx.auditLog.create({
+        data: {
+          acao: 'CREATE_ATIVIDADE',
+          entidade: 'Atividade',
+          entidadeId: created.id,
+          utilizadorId: session.user.id,
+          ip,
+          userAgent,
+          detalhes: {
+            inqueritoid,
+            descricao,
+            quantidade: quantidade ?? null,
+            dataPrazo: dataPrazo ?? null,
+          } as never,
+        },
+      })
+
+      const transicao = await applyAtividadeTransicao({
+        tx,
+        atividade: {
+          id: created.id,
+          descricao: created.descricao,
+          dataRealizacao: created.dataRealizacao,
+        },
+        inquerito: {
+          id: inquerito.id,
+          estadoId: inquerito.estado.id,
+          estado: inquerito.estado,
+        },
         utilizadorId: session.user.id,
-      },
-      include: {
-        realizadaPor: { select: { id: true, nome: true } },
-      },
+        req,
+      })
+
+      return { atividade: created, transicao }
     })
 
-    // Fire notification async (non-blocking)
+    // Notify the inspetor about the new activity (fire-and-forget).
     notifyAtividadeAdicionada({
       inqueritoid,
       nuipc: inquerito.nuipc,
@@ -85,7 +133,14 @@ export async function POST(req: NextRequest) {
       addedByUserId: session.user.id,
     }).catch(() => {})
 
-    return Response.json(atividade, { status: 201 })
+    // If the inquérito transitioned, the detail page caches need to refresh.
+    if (transicao.applied) {
+      revalidatePath('/inqueritos')
+      revalidatePath(`/inqueritos/${nuipcToSlug(inquerito.nuipc)}`)
+      revalidatePath('/dashboard')
+    }
+
+    return Response.json({ atividade, transicao }, { status: 201 })
   } catch (error) {
     return handleApiError(error)
   }

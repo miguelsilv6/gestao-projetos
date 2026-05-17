@@ -10,7 +10,8 @@ import { InqueritoTable } from '@/components/inqueritos/inquerito-table'
 import { ExportButton } from '@/components/inqueritos/export-button'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
-import type { Role, EstadoInquerito, FaseProcessual } from '@/generated/prisma/enums'
+import { listEstados } from '@/lib/estados'
+import type { Role, FaseProcessual } from '@/generated/prisma/enums'
 
 interface SearchParams {
   page?: string
@@ -51,6 +52,24 @@ export default async function InqueritosPage({
   const sort = sp.sort && ALLOWED_SORT[sp.sort] ? sp.sort : 'updatedAt'
   const order = sp.order === 'asc' ? 'asc' : 'desc'
 
+  // Read the system-wide default for the estado filter. Used when the URL
+  // has no `estado` param (initial visit). Sentinel `__none__` means the user
+  // explicitly chose "no estado filter".
+  const config = await prisma.configuracaoSistema.findUnique({
+    where: { id: 'singleton' },
+    select: { inqueritoFiltroEstadosDefault: true },
+  })
+  const estadosDefault = config?.inqueritoFiltroEstadosDefault ?? []
+
+  let estadoCodigos: string[] = []
+  if (sp.estado === undefined) {
+    estadoCodigos = estadosDefault
+  } else if (sp.estado === '__none__' || sp.estado === '') {
+    estadoCodigos = []
+  } else {
+    estadoCodigos = sp.estado.split(',').filter(Boolean)
+  }
+
   const roleWhere = buildInqueritoWhere(role, session.user.id, session.user.brigadaId)
   const where = {
     deletedAt: null,
@@ -62,14 +81,17 @@ export default async function InqueritosPage({
         { natureza: { contains: sp.search, mode: 'insensitive' as const } },
       ],
     }),
-    ...(sp.estado && { estado: sp.estado as EstadoInquerito }),
+    ...(estadoCodigos.length > 0 && {
+      estado: { codigo: { in: estadoCodigos } },
+    }),
     ...(sp.faseProcessual && { faseProcessual: sp.faseProcessual as FaseProcessual }),
     ...(sp.brigadaId && { brigadaId: sp.brigadaId }),
     ...(sp.inspetorId && { inspetorId: sp.inspetorId }),
     ...(sp.semInspetor === '1' && { inspetorId: null }),
     ...(sp.overdue === '1' && {
       dataPrazo: { lt: new Date() },
-      estado: { notIn: ['CONCLUIDO', 'ARQUIVADO'] as never[] },
+      // overdue implies non-terminal — overrides any estado filter for safety
+      estado: { terminal: false },
     }),
     ...((sp.dataAberturaFrom || sp.dataAberturaTo) && {
       dataAbertura: {
@@ -83,13 +105,14 @@ export default async function InqueritosPage({
   const canBulk = hasPermission(role, 'inquerito:bulk:brigade')
   const canTransfer = hasPermission(role, 'inquerito:transfer')
 
-  const [inqueritos, total, inspetores, brigadas] = await Promise.all([
+  const [inqueritos, total, inspetores, brigadas, estados] = await Promise.all([
     prisma.inquerito.findMany({
       where,
       skip: (page - 1) * limit,
       take: limit,
       orderBy: { [sort]: order } as never,
       include: {
+        estado: { select: { id: true, codigo: true, nome: true, cor: true, terminal: true, ativo: true } },
         brigada: { select: { id: true, nome: true } },
         inspetor: { select: { id: true, nome: true } },
         _count: { select: { atividades: true } },
@@ -100,7 +123,7 @@ export default async function InqueritosPage({
       ? prisma.utilizador.findMany({
           where: { role: 'INSPETOR', ativo: true },
           orderBy: { nome: 'asc' },
-          select: { id: true, nome: true },
+          select: { id: true, nome: true, brigadaId: true },
         })
       : Promise.resolve([]),
     canBulk
@@ -110,6 +133,7 @@ export default async function InqueritosPage({
           select: { id: true, nome: true },
         })
       : Promise.resolve([]),
+    listEstados({ onlyActive: true }),
   ])
 
   const totalPages = Math.ceil(total / limit)
@@ -147,7 +171,10 @@ export default async function InqueritosPage({
       </div>
 
       <Suspense fallback={null}>
-        <InqueritoFilters />
+        <InqueritoFilters
+          estados={estados}
+          estadosDefault={estadosDefault}
+        />
       </Suspense>
 
       <InqueritoTable
@@ -156,6 +183,7 @@ export default async function InqueritosPage({
         canTransfer={canTransfer}
         inspetores={inspetores}
         brigadas={brigadas}
+        estados={estados}
       />
 
       {totalPages > 1 && (

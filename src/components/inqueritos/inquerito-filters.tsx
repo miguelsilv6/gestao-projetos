@@ -5,8 +5,15 @@ import { useCallback, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { ESTADO_LABELS, FASE_LABELS } from '@/lib/constants'
+import { FASE_LABELS } from '@/lib/constants'
 import { Search, X, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react'
+import { EstadosMultiSelect } from './estados-multi-select'
+
+interface EstadoFilterOption {
+  id: string
+  codigo: string
+  nome: string
+}
 
 const SORT_OPTIONS: Record<string, string> = {
   'updatedAt:desc': 'Última alteração',
@@ -16,7 +23,14 @@ const SORT_OPTIONS: Record<string, string> = {
   'nuipc:asc': 'NUIPC (A→Z)',
 }
 
-export function InqueritoFilters() {
+export function InqueritoFilters({
+  estados,
+  estadosDefault = [],
+}: {
+  estados: EstadoFilterOption[]
+  /** System-wide default applied when the URL has no `estado` param. */
+  estadosDefault?: string[]
+}) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -72,27 +86,31 @@ export function InqueritoFilters() {
           />
         </div>
 
-        <Select
-          value={searchParams.get('estado') || ''}
-          onValueChange={(v) => update({ estado: !v || v === 'all' ? null : v })}
-        >
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Estado" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os estados</SelectItem>
-            {Object.entries(ESTADO_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <EstadosMultiSelect
+          estados={estados}
+          value={(() => {
+            const raw = searchParams.get('estado')
+            // No param yet → apply system default (matches what server queries with)
+            if (raw === null) return estadosDefault
+            if (raw === '__none__' || raw === '') return []
+            return raw.split(',').filter(Boolean)
+          })()}
+          onChange={(next) =>
+            update({ estado: next.length > 0 ? next.join(',') : '__none__' })
+          }
+        />
 
         <Select
-          value={searchParams.get('faseProcessual') || ''}
+          value={searchParams.get('faseProcessual') || 'all'}
           onValueChange={(v) => update({ faseProcessual: !v || v === 'all' ? null : v })}
         >
           <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Fase processual" />
+            <SelectValue placeholder="Fase processual">
+              {(v: string) => {
+                if (!v || v === 'all') return 'Todas as fases'
+                return FASE_LABELS[v as keyof typeof FASE_LABELS] ?? 'Fase processual'
+              }}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as fases</SelectItem>
@@ -104,7 +122,9 @@ export function InqueritoFilters() {
 
         <Select value={currentSort} onValueChange={applySort}>
           <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Ordenar" />
+            <SelectValue placeholder="Ordenar">
+              {(v: string) => SORT_OPTIONS[v] ?? 'Ordenar'}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {Object.entries(SORT_OPTIONS).map(([value, label]) => (

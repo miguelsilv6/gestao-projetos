@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession, handleApiError, apiError } from '@/lib/auth-helpers'
 import { hasPermission } from '@/lib/rbac'
+import { writeAudit } from '@/lib/audit'
 import { z } from 'zod'
 import type { Role } from '@/generated/prisma/enums'
 
@@ -11,6 +12,8 @@ const schema = z.object({
   ordem: z.coerce.number().int().min(0).optional(),
   temPrazo: z.boolean().optional(),
   temQuantidade: z.boolean().optional(),
+  contaParaEstatistica: z.boolean().optional(),
+  transicaoEstadoId: z.string().nullable().optional(),
 })
 
 export async function GET() {
@@ -38,7 +41,28 @@ export async function POST(req: NextRequest) {
     const exists = await prisma.atividadePadrao.findUnique({ where: { nome: parsed.data.nome } })
     if (exists) return apiError('Já existe uma atividade padrão com este nome', 409)
 
+    // If a transition target was given, verify it exists and is active.
+    if (parsed.data.transicaoEstadoId) {
+      const estado = await prisma.estadoInquerito.findUnique({
+        where: { id: parsed.data.transicaoEstadoId },
+        select: { ativo: true },
+      })
+      if (!estado || !estado.ativo) {
+        return apiError('Estado de transição inválido ou inactivo', 400)
+      }
+    }
+
     const atividade = await prisma.atividadePadrao.create({ data: parsed.data })
+
+    await writeAudit({
+      req,
+      acao: 'CREATE_ATIVIDADE_PADRAO',
+      entidade: 'AtividadePadrao',
+      entidadeId: atividade.id,
+      utilizadorId: session.user.id,
+      detalhes: parsed.data as never,
+    })
+
     return Response.json(atividade, { status: 201 })
   } catch (error) {
     return handleApiError(error)

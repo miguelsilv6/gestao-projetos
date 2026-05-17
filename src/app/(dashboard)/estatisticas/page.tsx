@@ -12,18 +12,42 @@ export default async function EstatisticasPage() {
   const role = session.user.role as Role
   if (!hasPermission(role, 'estatistica:read')) redirect('/dashboard')
 
-  const brigadas = await prisma.brigada.findMany({
-    orderBy: { nome: 'asc' },
-    select: { id: true, nome: true },
-  })
+  // INSPETOR_CHEFE is locked to their own brigada — no brigada filter, no
+  // "Por Brigada" chart, inspetores list scoped to their brigada.
+  const lockedToBrigada = role === 'INSPETOR_CHEFE'
+
+  const [brigadas, inspetores] = await Promise.all([
+    lockedToBrigada
+      ? Promise.resolve([])
+      : prisma.brigada.findMany({
+          orderBy: { nome: 'asc' },
+          select: { id: true, nome: true },
+        }),
+    prisma.utilizador.findMany({
+      where: {
+        ativo: true,
+        ...(lockedToBrigada
+          ? { brigadaId: session.user.brigadaId ?? '__no_brigada__' }
+          : {}),
+      },
+      orderBy: { nome: 'asc' },
+      select: { id: true, nome: true, brigadaId: true },
+    }),
+  ])
 
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Estatísticas</h1>
-        <p className="text-muted-foreground text-sm">Análise de inquéritos</p>
+        <p className="text-muted-foreground text-sm">
+          {lockedToBrigada ? 'Análise da sua brigada' : 'Análise de inquéritos'}
+        </p>
       </div>
-      <EstatisticasDashboard brigadas={brigadas} />
+      <EstatisticasDashboard
+        brigadas={brigadas}
+        inspetores={inspetores}
+        lockedToBrigada={lockedToBrigada}
+      />
     </div>
   )
 }

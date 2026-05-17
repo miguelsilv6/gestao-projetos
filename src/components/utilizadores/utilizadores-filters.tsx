@@ -9,6 +9,7 @@ import { Search, X } from 'lucide-react'
 import { ROLE_LABELS } from '@/lib/rbac'
 
 const ROLES = Object.entries(ROLE_LABELS) as [string, string][]
+const ROLE_LABEL_MAP = ROLE_LABELS as Record<string, string>
 
 export function UtilizadoresFilters() {
   const router = useRouter()
@@ -46,7 +47,11 @@ export function UtilizadoresFilters() {
 
       <Select value={role || 'all'} onValueChange={(v) => update('role', !v || v === 'all' ? '' : v)}>
         <SelectTrigger className="h-9 w-[160px] text-sm">
-          <SelectValue placeholder="Todos os perfis" />
+          <SelectValue placeholder="Todos os perfis">
+            {(v: string) =>
+              !v || v === 'all' ? 'Todos os perfis' : ROLE_LABEL_MAP[v] ?? v
+            }
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Todos os perfis</SelectItem>
@@ -58,7 +63,11 @@ export function UtilizadoresFilters() {
 
       <Select value={ativo || 'all'} onValueChange={(v) => update('ativo', !v || v === 'all' ? '' : v)}>
         <SelectTrigger className="h-9 w-[130px] text-sm">
-          <SelectValue placeholder="Estado" />
+          <SelectValue placeholder="Estado">
+            {(v: string) =>
+              v === 'true' ? 'Activos' : v === 'false' ? 'Inactivos' : 'Todos'
+            }
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Todos</SelectItem>
