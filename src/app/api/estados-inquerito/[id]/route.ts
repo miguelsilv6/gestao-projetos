@@ -4,7 +4,11 @@ import { prisma } from '@/lib/prisma'
 import { getSession, handleApiError, apiError } from '@/lib/auth-helpers'
 import { hasPermission } from '@/lib/rbac'
 import { writeAudit, diff } from '@/lib/audit'
-import { ESTADO_COR_OPTIONS, PROTECTED_ESTADO_CODIGOS } from '@/lib/constants'
+import {
+  ESTADO_COR_OPTIONS,
+  PROTECTED_ESTADO_CODIGOS,
+  REOPEN_ESTADO_CODIGO,
+} from '@/lib/constants'
 import { z } from 'zod'
 import type { Role } from '@/generated/prisma/enums'
 
@@ -48,6 +52,16 @@ export async function PUT(
     ) {
       return apiError(
         'Não é possível alterar a flag terminal num estado protegido pelo sistema',
+        409,
+      )
+    }
+
+    // The estado used for reabertura is critical — desactivar este código
+    // partiria a /api/inqueritos/[nuipc]/reopen. Bloquear sempre,
+    // independentemente de haver ou não inquéritos a usá-lo neste momento.
+    if (data.ativo === false && existing.codigo === REOPEN_ESTADO_CODIGO) {
+      return apiError(
+        'Este estado é usado pela reabertura de inquéritos — não pode ser desactivado.',
         409,
       )
     }

@@ -23,6 +23,13 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
+interface EstadoOption {
+  id: string
+  codigo: string
+  nome: string
+  ativo: boolean
+}
+
 // ─── Atividade Padrão ─────────────────────────────────────────────────────────
 
 interface AtividadePadrao {
@@ -313,6 +320,9 @@ type Tab = 'sistema' | 'estados' | 'atividades'
 export default function ConfiguracoesPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('sistema')
+  const [estados, setEstados] = useState<EstadoOption[]>([])
+  const [estadosDefault, setEstadosDefault] = useState<string[]>([])
+  const [savingDefault, setSavingDefault] = useState(false)
 
   const {
     register,
@@ -322,15 +332,19 @@ export default function ConfiguracoesPage() {
   } = useForm<FormData>({ resolver: zodResolver(schema) })
 
   useEffect(() => {
-    fetch('/api/configuracoes')
-      .then((r) => r.json())
-      .then((d) => {
+    Promise.all([
+      fetch('/api/configuracoes').then((r) => r.json()),
+      fetch('/api/estados-inquerito').then((r) => r.json()),
+    ])
+      .then(([d, e]) => {
         reset({
           prazoAlertaDias: d.prazoAlertaDias,
           backupScheduleCron: d.backupScheduleCron,
           emailRemetenteNome: d.emailRemetenteNome,
           emailRemetenteAddr: d.emailRemetenteAddr,
         })
+        setEstadosDefault(d.inqueritoFiltroEstadosDefault ?? [])
+        setEstados(Array.isArray(e) ? e : [])
         setLoading(false)
       })
       .catch(() => {
@@ -338,6 +352,20 @@ export default function ConfiguracoesPage() {
         setLoading(false)
       })
   }, [reset])
+
+  // Refresh the estados list when the user enters Sistema (so the predefinição
+  // chips reflect any state added/removed in the Estados tab) — and also when
+  // entering Estados (so the list there stays fresh after creating/editing).
+  useEffect(() => {
+    if (loading) return
+    if (tab !== 'sistema' && tab !== 'estados') return
+    fetch('/api/estados-inquerito')
+      .then((r) => r.json())
+      .then((e) => {
+        if (Array.isArray(e)) setEstados(e)
+      })
+      .catch(() => {})
+  }, [tab, loading])
 
   async function onSubmit(data: FormData) {
     const res = await fetch('/api/configuracoes', {
@@ -351,6 +379,30 @@ export default function ConfiguracoesPage() {
       return
     }
     toast.success('Configurações guardadas')
+  }
+
+  async function saveEstadosDefault(next: string[]) {
+    setSavingDefault(true)
+    setEstadosDefault(next)
+    const res = await fetch('/api/configuracoes', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inqueritoFiltroEstadosDefault: next }),
+    })
+    setSavingDefault(false)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      toast.error(err.error ?? 'Erro ao guardar predefinição')
+      return
+    }
+    toast.success('Predefinição actualizada')
+  }
+
+  function toggleEstadoDefault(codigo: string) {
+    const next = estadosDefault.includes(codigo)
+      ? estadosDefault.filter((c) => c !== codigo)
+      : [...estadosDefault, codigo]
+    saveEstadosDefault(next)
   }
 
   if (loading) return <div className="text-sm text-muted-foreground">A carregar...</div>
@@ -446,6 +498,54 @@ export default function ConfiguracoesPage() {
                   <p className="text-xs text-red-600">{errors.emailRemetenteAddr.message}</p>
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Filtro predefinido na lista de inquéritos</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Quando um utilizador abre <code>/inqueritos</code> sem filtros activos, são aplicados
+                automaticamente os estados aqui escolhidos. Em qualquer altura o utilizador pode
+                limpar ou trocar a selecção.
+              </p>
+              {estados.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic">
+                  Sem estados configurados.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {estados
+                    .filter((e) => e.ativo)
+                    .map((e) => {
+                      const active = estadosDefault.includes(e.codigo)
+                      return (
+                        <button
+                          key={e.id}
+                          type="button"
+                          onClick={() => toggleEstadoDefault(e.codigo)}
+                          disabled={savingDefault}
+                          className={cn(
+                            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
+                            active
+                              ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                              : 'bg-card text-muted-foreground border-input hover:bg-muted',
+                          )}
+                        >
+                          {active && <Check className="h-3 w-3" />}
+                          {e.nome}
+                        </button>
+                      )
+                    })}
+                </div>
+              )}
+              {estadosDefault.length === 0 && estados.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Nenhum estado predefinido — a lista abre sem filtro de estado.
+                </p>
+              )}
             </CardContent>
           </Card>
 

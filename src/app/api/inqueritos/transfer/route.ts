@@ -31,8 +31,11 @@ export async function POST(req: NextRequest) {
       return apiError('Brigada destino é igual à actual', 409)
     }
 
-    if (inquerito.estado.codigo === 'ARQUIVADO') {
-      return apiError('Inquérito arquivado não pode ser transferido', 409)
+    if (inquerito.estado.terminal) {
+      return apiError(
+        'Inquérito em estado terminal não pode ser transferido. Reabra primeiro.',
+        409,
+      )
     }
 
     const brigadaDestino = await prisma.brigada.findUnique({

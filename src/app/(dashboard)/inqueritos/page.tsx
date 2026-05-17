@@ -52,6 +52,24 @@ export default async function InqueritosPage({
   const sort = sp.sort && ALLOWED_SORT[sp.sort] ? sp.sort : 'updatedAt'
   const order = sp.order === 'asc' ? 'asc' : 'desc'
 
+  // Read the system-wide default for the estado filter. Used when the URL
+  // has no `estado` param (initial visit). Sentinel `__none__` means the user
+  // explicitly chose "no estado filter".
+  const config = await prisma.configuracaoSistema.findUnique({
+    where: { id: 'singleton' },
+    select: { inqueritoFiltroEstadosDefault: true },
+  })
+  const estadosDefault = config?.inqueritoFiltroEstadosDefault ?? []
+
+  let estadoCodigos: string[] = []
+  if (sp.estado === undefined) {
+    estadoCodigos = estadosDefault
+  } else if (sp.estado === '__none__' || sp.estado === '') {
+    estadoCodigos = []
+  } else {
+    estadoCodigos = sp.estado.split(',').filter(Boolean)
+  }
+
   const roleWhere = buildInqueritoWhere(role, session.user.id, session.user.brigadaId)
   const where = {
     deletedAt: null,
@@ -63,13 +81,16 @@ export default async function InqueritosPage({
         { natureza: { contains: sp.search, mode: 'insensitive' as const } },
       ],
     }),
-    ...(sp.estado && { estado: { codigo: sp.estado } }),
+    ...(estadoCodigos.length > 0 && {
+      estado: { codigo: { in: estadoCodigos } },
+    }),
     ...(sp.faseProcessual && { faseProcessual: sp.faseProcessual as FaseProcessual }),
     ...(sp.brigadaId && { brigadaId: sp.brigadaId }),
     ...(sp.inspetorId && { inspetorId: sp.inspetorId }),
     ...(sp.semInspetor === '1' && { inspetorId: null }),
     ...(sp.overdue === '1' && {
       dataPrazo: { lt: new Date() },
+      // overdue implies non-terminal — overrides any estado filter for safety
       estado: { terminal: false },
     }),
     ...((sp.dataAberturaFrom || sp.dataAberturaTo) && {
@@ -150,7 +171,10 @@ export default async function InqueritosPage({
       </div>
 
       <Suspense fallback={null}>
-        <InqueritoFilters estados={estados} />
+        <InqueritoFilters
+          estados={estados}
+          estadosDefault={estadosDefault}
+        />
       </Suspense>
 
       <InqueritoTable

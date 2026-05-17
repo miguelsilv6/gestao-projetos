@@ -20,6 +20,30 @@ export async function checkPermission(permission: Permission) {
   return session
 }
 
+/**
+ * Atividade where-clause scoped by role for the /prazos page.
+ *   INSPETOR        → atividades que ele próprio criou
+ *   INSPETOR_CHEFE  → atividades em inquéritos da sua brigada
+ *   COORDENADOR/ADMIN → todas
+ * Fail-closed for INSPETOR_CHEFE without brigada (configuração inválida).
+ */
+export function buildAtividadePrazoWhere(
+  role: Role,
+  userId: string,
+  brigadaId: string | null,
+): Prisma.AtividadeWhereInput {
+  if (role === 'INSPETOR') {
+    return { utilizadorId: userId }
+  }
+  if (role === 'INSPETOR_CHEFE') {
+    if (!brigadaId) {
+      return { id: '__inspetor_chefe_sem_brigada__' }
+    }
+    return { inquerito: { brigadaId } }
+  }
+  return {}
+}
+
 export function buildInqueritoWhere(
   role: Role,
   userId: string,

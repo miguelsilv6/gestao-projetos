@@ -201,8 +201,12 @@ export function InqueritoForm({
             <div className="space-y-1.5">
               <Label>Fase processual *</Label>
               <Select
-                defaultValue={defaultValues?.faseProcessual ?? 'INQUERITO'}
-                onValueChange={(v) => setValue('faseProcessual', v as InqueritoFormData['faseProcessual'])}
+                value={watch('faseProcessual') || 'INQUERITO'}
+                onValueChange={(v) =>
+                  setValue('faseProcessual', v as InqueritoFormData['faseProcessual'], {
+                    shouldDirty: true,
+                  })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar fase">

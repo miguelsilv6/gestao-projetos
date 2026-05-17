@@ -83,9 +83,14 @@ export async function PUT(
     const targetEstado = await findEstadoById(data.estadoId)
     if (!targetEstado || !targetEstado.ativo) return apiError('Estado inválido', 400)
 
-    // ARQUIVADO-like full lock: arquivado existing + same target → blocked
-    if (existing.estado.codigo === 'ARQUIVADO' && targetEstado.codigo === 'ARQUIVADO') {
-      return apiError('Inquérito arquivado é só de leitura. Use a reabertura.', 409)
+    // Terminal-state full lock: if the inquérito is in a terminal state AND the
+    // user is not transitioning out of it (same target), editing is forbidden.
+    // To change anything in a terminal inquérito, it must be reopened first.
+    if (existing.estado.terminal && targetEstado.id === existing.estadoId) {
+      return apiError(
+        'Inquérito em estado terminal é só de leitura. Use a reabertura para reactivar.',
+        409,
+      )
     }
 
     // State machine

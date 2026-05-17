@@ -29,6 +29,7 @@ interface PorEstado {
 }
 interface PorFase { fase: string; count: number }
 interface PorBrigada { brigadaId: string; nome: string; count: number }
+interface PorInspetor { inspetorId: string; nome: string; count: number }
 interface PorNatureza { natureza: string; count: number }
 
 const FASE_LABELS: Record<string, string> = {
@@ -93,6 +94,24 @@ export function BrigadaBarChart({ data }: { data: PorBrigada[] }) {
         <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
         <Tooltip />
         <Bar dataKey="count" name="Inquéritos" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
+export function InspetorBarChart({ data }: { data: PorInspetor[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={Math.max(220, data.length * 28)}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+        <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+        <YAxis dataKey="nome" type="category" tick={{ fontSize: 11 }} width={140} />
+        <Tooltip />
+        <Bar dataKey="count" name="Inquéritos" fill="#10b981" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )

@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { getSession, handleApiError, apiError } from '@/lib/auth-helpers'
 import { hasPermission } from '@/lib/rbac'
+import { getRequestInfo } from '@/lib/request-info'
 import { bulkActionSchema } from '@/lib/validations/inquerito'
 import { canTransition } from '@/lib/inquerito-state'
 import { findEstadoById } from '@/lib/estados'
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
 
     const validIds = targets.map((t) => t.id)
     const auditAcao = `BULK_${action.toUpperCase()}`
+    const { ip, userAgent } = getRequestInfo(req)
 
     await prisma.$transaction(async (tx) => {
       const data: Prisma.InqueritoUncheckedUpdateManyInput = {}
@@ -125,6 +127,8 @@ export async function POST(req: NextRequest) {
           entidade: 'Inquerito',
           entidadeId: t.id,
           utilizadorId: session.user.id,
+          ip,
+          userAgent,
           detalhes: {
             nuipc: t.nuipc,
             before: {

@@ -222,7 +222,19 @@ export function EstadosTab() {
                   onValueChange={(v) => setNeu({ ...neu, cor: v ?? 'blue' })}
                 >
                   <SelectTrigger>
-                    <SelectValue>{(v: string) => v}</SelectValue>
+                    <SelectValue>
+                      {(v: string) => (
+                        <span className="inline-flex items-center gap-2">
+                          <span
+                            className={cn(
+                              'inline-block h-3 w-3 rounded-full',
+                              ESTADO_COR_CLASSES[v] ?? '',
+                            )}
+                          />
+                          {v}
+                        </span>
+                      )}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {ESTADO_COR_OPTIONS.map((c) => (

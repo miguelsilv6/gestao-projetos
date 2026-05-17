@@ -42,7 +42,11 @@ export function BrigadasFilters() {
 
       <Select value={ativa || 'all'} onValueChange={(v) => update('ativa', !v || v === 'all' ? '' : v)}>
         <SelectTrigger className="h-9 w-[130px] text-sm">
-          <SelectValue placeholder="Estado" />
+          <SelectValue placeholder="Estado">
+            {(v: string) =>
+              v === 'true' ? 'Ativas' : v === 'false' ? 'Inativas' : 'Todas'
+            }
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Todas</SelectItem>

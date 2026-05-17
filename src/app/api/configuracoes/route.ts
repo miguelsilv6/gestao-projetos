@@ -11,6 +11,7 @@ const schema = z.object({
   backupScheduleCron: z.string().min(1).max(100).optional(),
   emailRemetenteNome: z.string().min(1).max(100).optional(),
   emailRemetenteAddr: z.string().email().optional(),
+  inqueritoFiltroEstadosDefault: z.array(z.string().min(1).max(40)).max(20).optional(),
 })
 
 export async function GET() {
@@ -49,22 +50,53 @@ export async function PUT(req: NextRequest) {
       create: { id: 'singleton', ...parsed.data },
     })
 
-    const changes = before
-      ? diff(before, config, [
-          'prazoAlertaDias',
-          'backupScheduleCron',
-          'emailRemetenteNome',
-          'emailRemetenteAddr',
-        ])
+    // Narrow to scalar fields before calling diff (helper doesn't handle arrays)
+    const scalarChanges = before
+      ? diff(
+          {
+            prazoAlertaDias: before.prazoAlertaDias,
+            backupScheduleCron: before.backupScheduleCron,
+            emailRemetenteNome: before.emailRemetenteNome,
+            emailRemetenteAddr: before.emailRemetenteAddr,
+          },
+          {
+            prazoAlertaDias: config.prazoAlertaDias,
+            backupScheduleCron: config.backupScheduleCron,
+            emailRemetenteNome: config.emailRemetenteNome,
+            emailRemetenteAddr: config.emailRemetenteAddr,
+          },
+          [
+            'prazoAlertaDias',
+            'backupScheduleCron',
+            'emailRemetenteNome',
+            'emailRemetenteAddr',
+          ],
+        )
       : null
-    if (changes || !before) {
+
+    // The diff helper doesn't compare arrays; do it manually so audit captures
+    // changes to inqueritoFiltroEstadosDefault as well.
+    const arrayChanged = before
+      ? JSON.stringify(before.inqueritoFiltroEstadosDefault ?? []) !==
+        JSON.stringify(config.inqueritoFiltroEstadosDefault ?? [])
+      : true
+
+    if (scalarChanges || arrayChanged || !before) {
       await writeAudit({
         req,
         acao: before ? 'UPDATE_CONFIG_SISTEMA' : 'CREATE_CONFIG_SISTEMA',
         entidade: 'ConfiguracaoSistema',
         entidadeId: 'singleton',
         utilizadorId: session.user.id,
-        detalhes: (changes ?? parsed.data) as never,
+        detalhes: {
+          ...(scalarChanges ?? {}),
+          ...(arrayChanged && {
+            inqueritoFiltroEstadosDefault: {
+              before: before?.inqueritoFiltroEstadosDefault ?? null,
+              after: config.inqueritoFiltroEstadosDefault,
+            },
+          }),
+        } as never,
       })
     }
 

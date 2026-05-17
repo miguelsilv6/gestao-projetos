@@ -205,12 +205,15 @@ model LoginAttempt {
 }
 
 model ConfiguracaoSistema {
-  id                 String   @id @default("singleton")
-  backupScheduleCron String   @default("0 2 * * *")
-  prazoAlertaDias    Int      @default(7)
-  emailRemetenteNome String   @default("GPI Sistema")
-  emailRemetenteAddr String   @default("noreply@gpi.pt")
-  updatedAt          DateTime @updatedAt
+  id                              String   @id @default("singleton")
+  backupScheduleCron              String   @default("0 2 * * *")
+  prazoAlertaDias                 Int      @default(7)
+  emailRemetenteNome              String   @default("GPI Sistema")
+  emailRemetenteAddr              String   @default("noreply@gpi.pt")
+  // Default estado codigos applied to /inqueritos when the user has no explicit
+  // filter set on the URL. Stored as codigos for stability across renames.
+  inqueritoFiltroEstadosDefault   String[] @default([])
+  updatedAt                       DateTime @updatedAt
 }
 
 model AtividadePadrao {

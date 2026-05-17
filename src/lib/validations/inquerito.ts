@@ -39,8 +39,13 @@ export const inqueritoSchema = z
       return
     }
 
-    const TOMORROW = new Date(Date.now() + 24 * 60 * 60 * 1000)
-    if (abertura > TOMORROW) {
+    // Compare in day-precision: floor both to local midnight to ignore time
+    // zone clock drift between client and server.
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    const aberturaDay = new Date(abertura)
+    aberturaDay.setHours(0, 0, 0, 0)
+    if (aberturaDay > startOfToday) {
       ctx.addIssue({
         code: 'custom',
         path: ['dataAbertura'],
@@ -79,12 +84,16 @@ export const inqueritoSchema = z
         message: 'Data de conclusão não pode ser anterior à abertura',
       })
     }
-    if (conclusao && conclusao > TOMORROW) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['dataConclusao'],
-        message: 'Data de conclusão não pode ser futura',
-      })
+    if (conclusao) {
+      const conclusaoDay = new Date(conclusao)
+      conclusaoDay.setHours(0, 0, 0, 0)
+      if (conclusaoDay > startOfToday) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['dataConclusao'],
+          message: 'Data de conclusão não pode ser futura',
+        })
+      }
     }
   })
 

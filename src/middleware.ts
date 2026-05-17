@@ -11,7 +11,7 @@ const ROUTE_ROLE_REQUIREMENTS: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: '/brigadas', roles: ['COORDENADOR', 'ADMINISTRACAO'] },
   {
     prefix: '/estatisticas',
-    roles: ['COORDENADOR', 'ESTATISTICA', 'ADMINISTRACAO'],
+    roles: ['INSPETOR_CHEFE', 'COORDENADOR', 'ESTATISTICA', 'ADMINISTRACAO'],
   },
 ]
 

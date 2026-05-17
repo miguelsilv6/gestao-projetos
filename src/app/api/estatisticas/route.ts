@@ -7,6 +7,7 @@ import type { Role } from '@/generated/prisma/enums'
 
 const querySchema = z.object({
   brigadaId: z.string().optional(),
+  inspetorId: z.string().optional(),
   dataInicio: z.string().date('dataInicio inválida').optional(),
   dataFim: z.string().date('dataFim inválida').optional(),
 })
@@ -23,15 +24,39 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const parsed = querySchema.safeParse({
       brigadaId: searchParams.get('brigadaId') ?? undefined,
+      inspetorId: searchParams.get('inspetorId') ?? undefined,
       dataInicio: searchParams.get('dataInicio') ?? undefined,
       dataFim: searchParams.get('dataFim') ?? undefined,
     })
     if (!parsed.success) return apiError(parsed.error.issues[0].message, 400)
 
-    const { brigadaId, dataInicio, dataFim } = parsed.data
+    const { brigadaId: requestedBrigadaId, inspetorId, dataInicio, dataFim } = parsed.data
+
+    // INSPETOR_CHEFE is locked to their own brigada.
+    const brigadaId =
+      role === 'INSPETOR_CHEFE'
+        ? session.user.brigadaId ?? '__no_brigada__'
+        : requestedBrigadaId
+
+    if (role === 'INSPETOR_CHEFE' && !session.user.brigadaId) {
+      return apiError('Sessão sem brigada associada — refresh ou re-login', 403)
+    }
+
+    // Defense in depth: for chefe, validate the inspetor (if any) belongs to
+    // their brigada. Skipping this would let a crafted URL probe across brigadas.
+    if (role === 'INSPETOR_CHEFE' && inspetorId) {
+      const inspetor = await prisma.utilizador.findUnique({
+        where: { id: inspetorId },
+        select: { brigadaId: true },
+      })
+      if (!inspetor || inspetor.brigadaId !== session.user.brigadaId) {
+        return apiError('Inspetor fora da sua brigada', 403)
+      }
+    }
 
     const where = {
       ...(brigadaId && { brigadaId }),
+      ...(inspetorId && { inspetorId }),
       ...(dataInicio || dataFim
         ? {
             dataAbertura: {
@@ -46,6 +71,7 @@ export async function GET(req: NextRequest) {
       porEstadoRaw,
       porFase,
       porBrigada,
+      porInspetorRaw,
       porNatureza,
       total,
       vencidos,
@@ -58,6 +84,13 @@ export async function GET(req: NextRequest) {
         where,
         _count: true,
         orderBy: { _count: { brigadaId: 'desc' } },
+      }),
+      prisma.inquerito.groupBy({
+        by: ['inspetorId'],
+        where: { ...where, inspetorId: { not: null } },
+        _count: true,
+        orderBy: { _count: { inspetorId: 'desc' } },
+        take: 20,
       }),
       prisma.inquerito.groupBy({
         by: ['natureza'],
@@ -80,7 +113,10 @@ export async function GET(req: NextRequest) {
     ])
 
     // Enrich groupBy with related labels
-    const [brigadas, estados] = await Promise.all([
+    const inspetorIds = porInspetorRaw
+      .map((r) => r.inspetorId)
+      .filter((id): id is string => id !== null)
+    const [brigadas, estados, inspetores] = await Promise.all([
       prisma.brigada.findMany({
         where: { id: { in: porBrigada.map((b) => b.brigadaId) } },
         select: { id: true, nome: true },
@@ -89,9 +125,16 @@ export async function GET(req: NextRequest) {
         where: { id: { in: porEstadoRaw.map((e) => e.estadoId) } },
         select: { id: true, codigo: true, nome: true, cor: true },
       }),
+      inspetorIds.length
+        ? prisma.utilizador.findMany({
+            where: { id: { in: inspetorIds } },
+            select: { id: true, nome: true },
+          })
+        : Promise.resolve([]),
     ])
     const brigadaNomes = Object.fromEntries(brigadas.map((b) => [b.id, b.nome]))
     const estadoById = new Map(estados.map((e) => [e.id, e]))
+    const inspetorNomes = Object.fromEntries(inspetores.map((u) => [u.id, u.nome]))
 
     return Response.json({
       total,
@@ -113,6 +156,13 @@ export async function GET(req: NextRequest) {
         nome: brigadaNomes[r.brigadaId] ?? r.brigadaId,
         count: r._count,
       })),
+      porInspetor: porInspetorRaw
+        .filter((r) => r.inspetorId !== null)
+        .map((r) => ({
+          inspetorId: r.inspetorId!,
+          nome: inspetorNomes[r.inspetorId!] ?? '—',
+          count: r._count,
+        })),
       porNatureza: porNatureza.map((r) => ({ natureza: r.natureza, count: r._count })),
     })
   } catch (error) {

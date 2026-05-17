@@ -8,6 +8,7 @@ import {
   Bell,
   Settings,
   ClipboardList,
+  CalendarClock,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -32,6 +33,12 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['INSPETOR', 'INSPETOR_CHEFE', 'COORDENADOR', 'ESTATISTICA', 'ADMINISTRACAO'],
   },
   {
+    label: 'Prazos',
+    href: '/prazos',
+    icon: CalendarClock,
+    roles: ['INSPETOR', 'INSPETOR_CHEFE', 'COORDENADOR', 'ADMINISTRACAO'],
+  },
+  {
     label: 'Brigadas',
     href: '/brigadas',
     icon: Shield,
@@ -41,7 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Estatísticas',
     href: '/estatisticas',
     icon: BarChart3,
-    roles: ['COORDENADOR', 'ESTATISTICA', 'ADMINISTRACAO'],
+    roles: ['INSPETOR_CHEFE', 'COORDENADOR', 'ESTATISTICA', 'ADMINISTRACAO'],
   },
   {
     label: 'Notificações',
