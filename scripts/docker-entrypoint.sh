@@ -6,7 +6,7 @@
 set -e
 
 echo "[entrypoint] Aplicando schema (prisma db push)..."
-npx prisma db push --accept-data-loss --skip-generate
+npx prisma db push --accept-data-loss --url "$DATABASE_URL"
 
 echo "[entrypoint] A executar seed (upserts, idempotente)..."
 # Seed never crashes the boot; we log and continue if it fails so the app

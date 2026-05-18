@@ -28,6 +28,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
+      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
       SEED_PASSWORD: ${SEED_PASSWORD:-Admin123!}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-}
@@ -37,10 +38,8 @@ services:
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-GPI Sistema}
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@gpi.local}
       CRON_SECRET: ${CRON_SECRET}
-    # Bind to 127.0.0.1 only by default so the app is not exposed to the LAN.
-    # Override HOST_PORT in .env if 3000 is taken locally.
     ports:
-      - '127.0.0.1:${HOST_PORT:-3000}:3000'
+      - '0.0.0.0:${HOST_PORT:-3000}:3000'
     volumes:
       - ./backups:/app/backups
     restart: unless-stopped
